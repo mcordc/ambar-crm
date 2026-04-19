@@ -2996,7 +2996,80 @@ function PaymentInstructionModal({ client, settings, onClose }) {
   const clientName = client.type === "entity" ? client.companyName : client.fullName;
 
   const handlePrint = () => {
-    window.print();
+    // Abrir ventana limpia con solo el contenido del PDF - evita duplicación
+    // causada por los wrappers del modal en el DOM principal
+    const pdfElement = document.querySelector(".print-instruction .pdf-page");
+    if (!pdfElement) {
+      window.print();
+      return;
+    }
+    const content = pdfElement.outerHTML;
+    const printWindow = window.open("", "_blank", "width=900,height=1200");
+    if (!printWindow) {
+      alert(lang === "es"
+        ? "Por favor permite ventanas emergentes para imprimir el instructivo."
+        : "Please allow pop-ups to print the instruction.");
+      return;
+    }
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <title>Payment Instruction - ${reference}</title>
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css">
+        <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500;600&family=Manrope:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+        <style>
+          * { box-sizing: border-box; }
+          body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Manrope', sans-serif;
+            color: #1A2342;
+            background: white;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+          }
+          @page { size: A4; margin: 12mm; }
+          .pdf-page {
+            max-width: 100%;
+            margin: 0;
+            padding: 0;
+            background: white;
+          }
+          .pdf-section, .pdf-footer {
+            page-break-inside: avoid;
+            break-inside: avoid;
+          }
+          table, tr, ol, ul, li {
+            page-break-inside: avoid;
+            break-inside: avoid;
+          }
+          h1, h2 {
+            page-break-after: avoid;
+            break-after: avoid;
+          }
+          .no-print { display: none !important; }
+          @media screen {
+            body { padding: 20px; background: #f5f1e8; }
+            .pdf-page { max-width: 210mm; margin: 0 auto; background: white; padding: 15mm 20mm; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+          }
+        </style>
+      </head>
+      <body>
+        ${content}
+        <script>
+          window.addEventListener('load', function() {
+            setTimeout(function() {
+              window.print();
+              setTimeout(function() { window.close(); }, 500);
+            }, 500);
+          });
+        </script>
+      </body>
+      </html>
+    `);
+    printWindow.document.close();
   };
 
   const canPreview = finalConcept && Number(amount) > 0;
@@ -3685,45 +3758,20 @@ export default function App() {
         ::-webkit-scrollbar-thumb { background: rgba(26,35,66,0.15); }
         ::-webkit-scrollbar-thumb:hover { background: rgba(26,35,66,0.3); }
 
-        /* Print styles for payment instruction PDF */
+        /* Print fallback — only applies if direct window.print() is triggered */
         @media print {
-          @page { size: A4; margin: 0; }
-          html, body { background: white !important; height: auto !important; }
-          body * { visibility: hidden !important; }
-          .print-instruction, .print-instruction * { visibility: visible !important; }
-          .print-instruction {
-            position: absolute !important;
-            left: 0; top: 0; width: 100%;
-            background: white !important;
-            overflow: visible !important;
-          }
-          .print-instruction .no-print { display: none !important; }
-          .pdf-page {
-            box-shadow: none !important;
-            margin: 0 !important;
-            max-width: 100% !important;
-            width: 100% !important;
-            min-height: auto !important;
-            overflow: visible !important;
-          }
-          /* Strong page-break controls: sections must not split */
-          .pdf-section {
-            page-break-inside: avoid !important;
-            break-inside: avoid !important;
-          }
-          .pdf-footer {
-            page-break-inside: avoid !important;
-            break-inside: avoid !important;
-            page-break-before: avoid !important;
-            break-before: avoid !important;
-          }
-          .pdf-page table { page-break-inside: avoid !important; break-inside: avoid !important; }
-          .pdf-page ol, .pdf-page ul { page-break-inside: avoid !important; break-inside: avoid !important; }
-          .pdf-page li { page-break-inside: avoid !important; break-inside: avoid !important; }
-          .pdf-page h1, .pdf-page h2 { page-break-after: avoid !important; break-after: avoid !important; }
-          .pdf-page tr { page-break-inside: avoid !important; break-inside: avoid !important; }
-          /* Hide app chrome */
+          @page { size: A4; margin: 12mm; }
+          html, body { background: white !important; }
           .no-print { display: none !important; }
+          .pdf-section, .pdf-footer {
+            page-break-inside: avoid !important;
+            break-inside: avoid !important;
+          }
+          .pdf-page table, .pdf-page tr,
+          .pdf-page ol, .pdf-page ul, .pdf-page li {
+            page-break-inside: avoid !important;
+            break-inside: avoid !important;
+          }
         }
 
         /* Responsive helpers for mobile */
