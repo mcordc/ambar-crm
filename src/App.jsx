@@ -3014,10 +3014,9 @@ function PaymentInstructionModal({ client, settings, onClose }) {
         </div>
 
         {/* Printable content */}
-        <div className="pdf-page bg-white text-[#1A2342] mx-auto" style={{ maxWidth: "210mm", minHeight: "297mm", fontFamily: "'Manrope', sans-serif", fontSize: "10pt", padding: "15mm 20mm", display: "flex", flexDirection: "column" }}>
-          <div style={{ flex: "1 0 auto" }}>
+        <div className="pdf-page bg-white text-[#1A2342] mx-auto" style={{ maxWidth: "210mm", fontFamily: "'Manrope', sans-serif", fontSize: "10pt", padding: "15mm 20mm" }}>
           {/* Header */}
-          <div className="flex items-center justify-between pb-5 mb-6 border-b-2 border-[#1A2342]">
+          <div className="pdf-section flex items-center justify-between pb-5 mb-6 border-b-2 border-[#1A2342]">
             <div>
               <div className="flex items-center gap-2 mb-1">
                 <img src="/logo.svg" alt="AMBAR" style={{ width: "32px", height: "32px" }} />
@@ -3043,7 +3042,7 @@ function PaymentInstructionModal({ client, settings, onClose }) {
           </div>
 
           {/* Title - bilingual */}
-          <div className="grid grid-cols-2 gap-8 mb-6">
+          <div className="pdf-section grid grid-cols-2 gap-8 mb-6">
             <div>
               <div style={{ fontSize: "7pt", letterSpacing: "0.2em", textTransform: "uppercase", color: "#4A6FA5", marginBottom: "4pt" }}>Español</div>
               <h1 style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: "24pt", fontWeight: 400, lineHeight: 1.1, letterSpacing: "0.02em" }}>
@@ -3059,7 +3058,7 @@ function PaymentInstructionModal({ client, settings, onClose }) {
           </div>
 
           {/* Reference & dates */}
-          <div className="grid grid-cols-3 gap-4 mb-6 p-4 bg-[#F5F1E8]" style={{ border: "1px solid rgba(26,35,66,0.15)" }}>
+          <div className="pdf-section grid grid-cols-3 gap-4 mb-6 p-4 bg-[#F5F1E8]" style={{ border: "1px solid rgba(26,35,66,0.15)" }}>
             <div>
               <div style={{ fontSize: "6.5pt", letterSpacing: "0.2em", textTransform: "uppercase", color: "#1A2342", opacity: 0.6 }}>Referencia / Reference</div>
               <div style={{ fontSize: "11pt", fontWeight: 600, marginTop: "3pt", letterSpacing: "0.05em" }}>{reference}</div>
@@ -3079,7 +3078,7 @@ function PaymentInstructionModal({ client, settings, onClose }) {
           </div>
 
           {/* Client & Payment bilingual */}
-          <div className="grid grid-cols-2 gap-8 mb-6">
+          <div className="pdf-section grid grid-cols-2 gap-8 mb-6">
             {/* ES */}
             <div>
               <div style={{ fontSize: "7pt", letterSpacing: "0.2em", textTransform: "uppercase", color: "#1A2342", opacity: 0.6, borderBottom: "1px solid rgba(26,35,66,0.2)", paddingBottom: "4pt", marginBottom: "8pt" }}>
@@ -3115,7 +3114,7 @@ function PaymentInstructionModal({ client, settings, onClose }) {
           </div>
 
           {/* Amount highlight */}
-          <div style={{ backgroundColor: "#1A2342", color: "#F5F1E8", padding: "16pt 20pt", marginBottom: "20pt" }}>
+          <div className="pdf-section" style={{ backgroundColor: "#1A2342", color: "#F5F1E8", padding: "16pt 20pt", marginBottom: "20pt" }}>
             <div className="grid grid-cols-2 gap-8">
               <div>
                 <div style={{ fontSize: "7pt", letterSpacing: "0.2em", textTransform: "uppercase", opacity: 0.6 }}>Monto a Transferir</div>
@@ -3133,7 +3132,7 @@ function PaymentInstructionModal({ client, settings, onClose }) {
           </div>
 
           {/* Bank Details - bilingual */}
-          <div className="mb-6">
+          <div className="pdf-section mb-6">
             <div style={{ fontSize: "7pt", letterSpacing: "0.2em", textTransform: "uppercase", color: "#1A2342", opacity: 0.6, marginBottom: "8pt" }}>
               Datos Bancarios / Banking Details
             </div>
@@ -3208,7 +3207,7 @@ function PaymentInstructionModal({ client, settings, onClose }) {
           </div>
 
           {/* Instructions - bilingual */}
-          <div className="grid grid-cols-2 gap-8 mb-6">
+          <div className="pdf-section grid grid-cols-2 gap-8 mb-6">
             <div>
               <div style={{ fontSize: "7pt", letterSpacing: "0.2em", textTransform: "uppercase", color: "#1A2342", opacity: 0.6, borderBottom: "1px solid rgba(26,35,66,0.2)", paddingBottom: "4pt", marginBottom: "8pt" }}>
                 Instrucciones Importantes
@@ -3237,23 +3236,24 @@ function PaymentInstructionModal({ client, settings, onClose }) {
 
           {/* Notes */}
           {notes && (
-            <div style={{ padding: "10pt 14pt", backgroundColor: "#FDFBF6", border: "1px solid rgba(26,35,66,0.15)", marginBottom: "20pt" }}>
+            <div className="pdf-section" style={{ padding: "10pt 14pt", backgroundColor: "#FDFBF6", border: "1px solid rgba(26,35,66,0.15)", marginBottom: "20pt" }}>
               <div style={{ fontSize: "7pt", letterSpacing: "0.2em", textTransform: "uppercase", color: "#1A2342", opacity: 0.6, marginBottom: "4pt" }}>Notas Adicionales / Additional Notes</div>
               <div style={{ fontSize: "9pt", whiteSpace: "pre-wrap" }}>{notes}</div>
             </div>
           )}
-          </div>
 
-          {/* Footer — sits at bottom via flex, no longer absolute */}
-          <div style={{ flexShrink: 0, marginTop: "20pt", paddingTop: "10pt", borderTop: "1px solid rgba(26,35,66,0.2)", fontSize: "7.5pt", color: "rgba(26,35,66,0.6)", letterSpacing: "0.05em" }} className="grid grid-cols-3 gap-4">
-            <div>{settings.company.legalName}<br/>{settings.company.address}</div>
-            <div className="text-center">
-              Documento generado el<br/>
-              {issueDate.toLocaleString("es-DO", { dateStyle: "short", timeStyle: "short" })}
-            </div>
-            <div className="text-right">
-              {settings.company.email}<br/>
-              {settings.company.website}
+          {/* Footer — stays with last content, won't overflow */}
+          <div className="pdf-footer" style={{ marginTop: "20pt", paddingTop: "10pt", borderTop: "1px solid rgba(26,35,66,0.2)", fontSize: "7.5pt", color: "rgba(26,35,66,0.6)", letterSpacing: "0.05em" }}>
+            <div className="grid grid-cols-3 gap-4">
+              <div>{settings.company.legalName}<br/>{settings.company.address}</div>
+              <div className="text-center">
+                Documento generado el<br/>
+                {issueDate.toLocaleString("es-DO", { dateStyle: "short", timeStyle: "short" })}
+              </div>
+              <div className="text-right">
+                {settings.company.email}<br/>
+                {settings.company.website}
+              </div>
             </div>
           </div>
         </div>
@@ -3688,27 +3688,42 @@ export default function App() {
         /* Print styles for payment instruction PDF */
         @media print {
           @page { size: A4; margin: 0; }
-          body { background: white !important; }
+          html, body { background: white !important; height: auto !important; }
           body * { visibility: hidden !important; }
           .print-instruction, .print-instruction * { visibility: visible !important; }
           .print-instruction {
             position: absolute !important;
             left: 0; top: 0; width: 100%;
             background: white !important;
+            overflow: visible !important;
           }
           .print-instruction .no-print { display: none !important; }
           .pdf-page {
             box-shadow: none !important;
             margin: 0 !important;
             max-width: 100% !important;
-            min-height: 100vh !important;
+            width: 100% !important;
+            min-height: auto !important;
+            overflow: visible !important;
           }
+          /* Strong page-break controls: sections must not split */
+          .pdf-section {
+            page-break-inside: avoid !important;
+            break-inside: avoid !important;
+          }
+          .pdf-footer {
+            page-break-inside: avoid !important;
+            break-inside: avoid !important;
+            page-break-before: avoid !important;
+            break-before: avoid !important;
+          }
+          .pdf-page table { page-break-inside: avoid !important; break-inside: avoid !important; }
+          .pdf-page ol, .pdf-page ul { page-break-inside: avoid !important; break-inside: avoid !important; }
+          .pdf-page li { page-break-inside: avoid !important; break-inside: avoid !important; }
+          .pdf-page h1, .pdf-page h2 { page-break-after: avoid !important; break-after: avoid !important; }
+          .pdf-page tr { page-break-inside: avoid !important; break-inside: avoid !important; }
           /* Hide app chrome */
           .no-print { display: none !important; }
-          /* Page-break control: avoid splitting these blocks across pages */
-          .pdf-page table { page-break-inside: avoid; }
-          .pdf-page ol, .pdf-page ul { page-break-inside: avoid; }
-          .pdf-page h1, .pdf-page h2 { page-break-after: avoid; }
         }
 
         /* Responsive helpers for mobile */
