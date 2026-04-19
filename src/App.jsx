@@ -1598,7 +1598,7 @@ function ClientForm({ initial, onSave, onCancel }) {
           {data.type === "individual" ? (
             <>
               <SectionTitle subtitle={t("sec_personal_sub")}>{t("sec_personal")}</SectionTitle>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Input label={lang === "es" ? "Nombre Completo / Full Name" : "Full Name / Nombre Completo"} value={data.fullName} onChange={v => update({ fullName: v })} required />
                 <Input label={lang === "es" ? "Nacionalidad / Nationality" : "Nationality / Nacionalidad"} value={data.nationality} onChange={v => update({ nationality: v })} />
                 <Select label={lang === "es" ? "Tipo de Documento" : "Document Type"} value={data.idType} onChange={v => update({ idType: v })} options={ID_TYPES} />
@@ -1619,7 +1619,7 @@ function ClientForm({ initial, onSave, onCancel }) {
           ) : (
             <>
               <SectionTitle subtitle={t("sec_corporate_sub")}>{t("sec_corporate")}</SectionTitle>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Input label={lang === "es" ? "Razón Social Completa" : "Full Legal Name"} value={data.companyName} onChange={v => update({ companyName: v })} required />
                 <Input label={lang === "es" ? "RNC (Rep. Dom.)" : "RNC (Dom. Rep.)"} value={data.rnc} onChange={v => update({ rnc: v })} />
                 <Input label={lang === "es" ? "ID Fiscal del Negocio (EIN/Otro)" : "Business Tax ID (EIN/Other)"} value={data.businessTaxId} onChange={v => update({ businessTaxId: v })} />
@@ -1630,7 +1630,7 @@ function ClientForm({ initial, onSave, onCancel }) {
                 <div />
               </div>
               <SectionTitle subtitle={t("sec_legal_rep_sub")}>{t("sec_legal_rep")}</SectionTitle>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Input label={lang === "es" ? "Nombre Completo" : "Full Name"} value={data.legalRepName} onChange={v => update({ legalRepName: v })} />
                 <Input label={lang === "es" ? "Nacionalidad" : "Nationality"} value={data.legalRepNationality} onChange={v => update({ legalRepNationality: v })} />
                 <Input label={lang === "es" ? "Número de ID" : "ID Number"} value={data.legalRepId} onChange={v => update({ legalRepId: v })} />
@@ -1640,7 +1640,7 @@ function ClientForm({ initial, onSave, onCancel }) {
           )}
 
           <SectionTitle>{t("sec_contact")}</SectionTitle>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Input label="Email" value={data.email} onChange={v => update({ email: v })} type="email" />
             <Input label={lang === "es" ? "Teléfono Principal" : "Primary Phone"} value={data.phone} onChange={v => update({ phone: v })} />
             <Input label={lang === "es" ? "Teléfono Secundario" : "Secondary Phone"} value={data.phoneSecondary} onChange={v => update({ phoneSecondary: v })} />
@@ -1655,7 +1655,7 @@ function ClientForm({ initial, onSave, onCancel }) {
       {tab === "villa" && (
         <div className="space-y-6">
           <SectionTitle subtitle={t("sec_villa_select_sub")}>{t("sec_villa_select")}</SectionTitle>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Select label={lang === "es" ? "Número de Villa / Lote" : "Villa / Lot Number"} value={data.lotNumber} onChange={v => update({ lotNumber: v })}
               options={Object.keys(LOT_SIZES_FT2).map(n => ({ v: n, l: `Villa #${n} — ${LOT_SIZES_FT2[n].toLocaleString()} ft² ${lang === "es" ? "terreno" : "lot"}` }))} />
             <Select label={lang === "es" ? "Modelo de Villa" : "Villa Model"} value={data.villaModel} onChange={v => update({ villaModel: v })}
@@ -1683,7 +1683,7 @@ function ClientForm({ initial, onSave, onCancel }) {
           </div>
 
           <SectionTitle>{t("sec_price_adj")}</SectionTitle>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Input label={t("lbl_price_override")} type="number" value={data.basePriceOverride} onChange={v => update({ basePriceOverride: v })}
               placeholder={t("lbl_price_override_ph")} />
             <Input label={t("lbl_discount")} type="number" value={data.discount} onChange={v => update({ discount: v })} placeholder="0" />
@@ -1758,7 +1758,7 @@ function ClientForm({ initial, onSave, onCancel }) {
           </div>
 
           <SectionTitle>{t("sec_tx_declaration")}</SectionTitle>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Select label={lang === "es" ? "Método de Pago Principal" : "Primary Payment Method"} value={data.paymentMethod} onChange={v => update({ paymentMethod: v })} options={PAYMENT_METHODS} />
             <Input label={lang === "es" ? "Entidad Financiera (Origen)" : "Financial Institution (Origin)"} value={data.originBank} onChange={v => update({ originBank: v })} placeholder={lang === "es" ? "Banco, País" : "Bank, Country"} />
           </div>
@@ -1781,7 +1781,7 @@ function ClientForm({ initial, onSave, onCancel }) {
       {tab === "payments" && (
         <div className="space-y-6">
           <SectionTitle subtitle={t("sec_initial_deposit_sub")}>{t("sec_initial_deposit")}</SectionTitle>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Input label={t("lbl_initial_deposit")} type="number" value={data.initialDeposit} onChange={v => update({ initialDeposit: v })} />
             <Input label={t("lbl_initial_deposit_date")} type="date" value={data.initialDepositDate} onChange={v => update({ initialDepositDate: v })} />
           </div>
@@ -1848,7 +1848,7 @@ function ClientForm({ initial, onSave, onCancel }) {
           <SectionTitle subtitle={t("sec_internal_notes_sub")}>{t("sec_internal_notes")}</SectionTitle>
           <Input textarea rows={10} value={data.notes} onChange={v => update({ notes: v })}
             placeholder={t("lbl_notes_ph")} />
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Input label={t("lbl_assigned_to")} value={data.assignedTo} onChange={v => update({ assignedTo: v })} />
             <Input label={t("lbl_lead_source")} value={data.leadSource} onChange={v => update({ leadSource: v })}
               placeholder={t("lbl_lead_source_ph")} />
@@ -1894,7 +1894,7 @@ function ClientDetail({ client, onEdit, onClose, onDelete, onGeneratePayment }) 
   return (
     <div className="space-y-8">
       {/* Header */}
-      <div className="flex items-start justify-between">
+      <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
         <div>
           <div className="flex items-center gap-3 mb-2">
             {client.type === "entity" ? <Building2 className="w-5 h-5 text-[#1A2342]/50" strokeWidth={1.3} /> : <UserCircle className="w-5 h-5 text-[#1A2342]/50" strokeWidth={1.3} />}
@@ -1913,7 +1913,7 @@ function ClientDetail({ client, onEdit, onClose, onDelete, onGeneratePayment }) 
             )}
           </div>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           <Button onClick={() => onGeneratePayment(client)} variant="gold" icon={Receipt}>{t("cd_gen_payment_btn")}</Button>
           <Button onClick={onEdit} variant="primary" icon={Edit3}>{t("edit")}</Button>
           <Button onClick={() => { if (confirm(t("lbl_confirm_delete"))) onDelete(client.id); }} variant="danger" icon={Trash2}>{t("delete")}</Button>
@@ -1922,8 +1922,8 @@ function ClientDetail({ client, onEdit, onClose, onDelete, onGeneratePayment }) 
 
       {/* Villa & Price Summary */}
       {(client.lotNumber || client.villaModel) && (
-        <div className="grid grid-cols-3 gap-0 border border-[#1A2342]/15">
-          <div className="p-5 border-r border-[#1A2342]/15">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-0 border border-[#1A2342]/15">
+          <div className="p-5 border-b md:border-b-0 md:border-r border-[#1A2342]/15">
             <div className="text-[10px] uppercase tracking-[0.2em] text-[#1A2342]/50 mb-2" style={{ fontFamily: "'Manrope', sans-serif" }}>{t("cd_villa_assigned")}</div>
             <div className="text-2xl text-[#1A2342]" style={{ fontFamily: "'Cormorant Garamond', serif" }}>
               {client.lotNumber ? `#${client.lotNumber}` : "—"}
@@ -1940,7 +1940,7 @@ function ClientDetail({ client, onEdit, onClose, onDelete, onGeneratePayment }) 
               </div>
             )}
           </div>
-          <div className="p-5 border-r border-[#1A2342]/15">
+          <div className="p-5 border-b md:border-b-0 md:border-r border-[#1A2342]/15">
             <div className="text-[10px] uppercase tracking-[0.2em] text-[#1A2342]/50 mb-2" style={{ fontFamily: "'Manrope', sans-serif" }}>{t("cd_price_total")}</div>
             <div className="text-2xl text-[#1A2342]" style={{ fontFamily: "'Cormorant Garamond', serif" }}>{fmtUSD(pricing.total)}</div>
             <div className="text-[11px] text-[#1A2342]/60 mt-1 space-y-0.5" style={{ fontFamily: "'Manrope', sans-serif" }}>
@@ -1965,7 +1965,7 @@ function ClientDetail({ client, onEdit, onClose, onDelete, onGeneratePayment }) 
       {/* Personal Info */}
       <div>
         <SectionTitle>{client.type === "entity" ? t("sec_corporate") : t("sec_personal")}</SectionTitle>
-        <div className="grid grid-cols-2 gap-x-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8">
           {client.type === "entity" ? (
             <>
               <InfoRow label={t("info_legal_name")} value={client.companyName} />
@@ -2001,7 +2001,7 @@ function ClientDetail({ client, onEdit, onClose, onDelete, onGeneratePayment }) 
       {/* Contact */}
       <div>
         <SectionTitle>{t("sec_contact")}</SectionTitle>
-        <div className="grid grid-cols-2 gap-x-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8">
           <InfoRow label={t("info_email")} value={client.email} icon={Mail} />
           <InfoRow label={t("info_phone")} value={client.phone} icon={Phone} />
           <InfoRow label={t("info_phone2")} value={client.phoneSecondary} icon={Phone} />
@@ -2012,7 +2012,7 @@ function ClientDetail({ client, onEdit, onClose, onDelete, onGeneratePayment }) 
       {/* AML */}
       <div>
         <SectionTitle>{t("cd_aml_compliance")}</SectionTitle>
-        <div className="grid grid-cols-2 gap-x-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8">
           <InfoRow label={t("info_pep")} value={client.isPep ? t("info_pep_yes") + (client.pepPosition || "") : t("info_pep_no")} />
           <InfoRow label={t("info_payment_method")} value={PAYMENT_METHODS.find(m => m.v === client.paymentMethod)?.l} />
           <InfoRow label={t("info_origin_bank")} value={client.originBank} />
@@ -2039,7 +2039,8 @@ function ClientDetail({ client, onEdit, onClose, onDelete, onGeneratePayment }) 
       {client.payments && client.payments.length > 0 && (
         <div>
           <SectionTitle>{t("cd_payment_history")}</SectionTitle>
-          <div className="border border-[#1A2342]/10">
+          <div className="border border-[#1A2342]/10 overflow-x-auto">
+            <div className="min-w-[600px]">
             <div className="grid grid-cols-12 gap-2 px-3 py-2 bg-[#1A2342]/5 text-[10px] uppercase tracking-[0.12em] text-[#1A2342]/60" style={{ fontFamily: "'Manrope', sans-serif" }}>
               <div className="col-span-2">{t("pay_date")}</div>
               <div className="col-span-2">{t("pay_type")}</div>
@@ -2056,6 +2057,7 @@ function ClientDetail({ client, onEdit, onClose, onDelete, onGeneratePayment }) 
                 <div className="col-span-2 text-right text-[#1A2342] font-medium">{fmtUSD(p.amount)}</div>
               </div>
             ))}
+            </div>
           </div>
         </div>
       )}
@@ -2155,14 +2157,14 @@ function Dashboard({ clients, onNewClient, onExport, onGoToClients, onGoToVillas
       </div>
 
       {/* KPIs */}
-      <div className="grid grid-cols-4 gap-0 border border-[#1A2342]/15">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-0 border border-[#1A2342]/15">
         {[
           { label: t("dash_total_clients"), value: clients.length, sub: `${stats.active} ${t("dash_total_clients_sub")}` },
           { label: t("dash_pipeline_total"), value: fmtUSD(stats.totalRevenue), sub: t("dash_pipeline_total_sub") },
           { label: t("dash_collected"), value: fmtUSD(stats.totalPaid), sub: stats.totalRevenue ? `${((stats.totalPaid/stats.totalRevenue)*100).toFixed(1)}% ${t("dash_collected_sub")}` : "0%" },
           { label: t("dash_villas_assigned"), value: `${stats.soldLots}/35`, sub: `${stats.availableLots} ${t("dash_villas_assigned_sub")}` },
         ].map((k, i) => (
-          <div key={i} className={`p-6 ${i < 3 ? "border-r border-[#1A2342]/15" : ""}`}>
+          <div key={i} className={`p-4 md:p-6 ${i % 2 === 0 ? "md:border-r border-r border-[#1A2342]/15" : ""} ${i < 2 ? "border-b md:border-b-0 border-[#1A2342]/15" : ""} ${i === 2 ? "md:border-r border-[#1A2342]/15" : ""}`}>
             <div className="text-[10px] uppercase tracking-[0.2em] text-[#1A2342]/50 mb-3" style={{ fontFamily: "'Manrope', sans-serif" }}>{k.label}</div>
             <div className="text-[#1A2342] mb-1" style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: "1.75rem", fontWeight: 500 }}>{k.value}</div>
             <div className="text-[11px] text-[#1A2342]/50" style={{ fontFamily: "'Manrope', sans-serif" }}>{k.sub}</div>
@@ -2173,7 +2175,7 @@ function Dashboard({ clients, onNewClient, onExport, onGoToClients, onGoToVillas
       {/* Pipeline breakdown */}
       <div>
         <SectionTitle>{t("dash_pipeline_by_status")}</SectionTitle>
-        <div className="grid grid-cols-7 gap-2">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-2">
           {STATUS_ORDER.map(s => {
             const cfg = STATUS_CONFIG[s];
             const count = stats.byStatus[s] || 0;
@@ -2188,7 +2190,7 @@ function Dashboard({ clients, onNewClient, onExport, onGoToClients, onGoToVillas
       </div>
 
       {/* Two columns: Recent & Top */}
-      <div className="grid grid-cols-2 gap-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
         <div>
           <SectionTitle>{t("dash_recent_activity")}</SectionTitle>
           {recentClients.length === 0 ? (
@@ -2285,7 +2287,7 @@ function VillasView({ clients, onClickClient }) {
       </div>
 
       {/* Grid */}
-      <div className="grid grid-cols-7 gap-2">
+      <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-7 gap-2">
         {Object.keys(LOT_SIZES_FT2).map(n => {
           const v = villaStatus[n];
           const cfg = v.client ? STATUS_CONFIG[v.client.status] : null;
@@ -2323,7 +2325,7 @@ function VillasView({ clients, onClickClient }) {
       {/* Models Legend */}
       <div className="pt-4 border-t border-[#1A2342]/10">
         <SectionTitle>{t("villa_models_available")}</SectionTitle>
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {Object.entries(VILLA_MODELS).map(([k, m]) => {
             const base = m.sqft * PRICE_PER_SQFT;
             return (
@@ -2380,7 +2382,7 @@ function ClientsList({ clients, onSelect, onNew, onExport, onDelete }) {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-end justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
         <div>
           <h1 className="text-[#1A2342]" style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: "2.5rem", fontWeight: 400, letterSpacing: "0.02em" }}>{t("clients_title")}</h1>
           <p className="text-sm text-[#1A2342]/60 mt-1" style={{ fontFamily: "'Manrope', sans-serif" }}>
@@ -2427,7 +2429,8 @@ function ClientsList({ clients, onSelect, onNew, onExport, onDelete }) {
           subtitle={search || filterStatus !== "all" ? t("clients_empty_filter") : t("clients_empty_new")}
           action={!search && filterStatus === "all" && <Button onClick={onNew} variant="primary" icon={Plus}>{t("clients_empty_action")}</Button>} />
       ) : (
-        <div className="border border-[#1A2342]/10">
+        <div className="border border-[#1A2342]/10 overflow-x-auto">
+          <div className="min-w-[800px]">
           <div className="grid grid-cols-12 gap-3 px-4 py-3 bg-[#1A2342]/5 text-[10px] uppercase tracking-[0.12em] text-[#1A2342]/60" style={{ fontFamily: "'Manrope', sans-serif" }}>
             <div className="col-span-3">{t("col_client")}</div>
             <div className="col-span-2">{t("col_status")}</div>
@@ -2477,6 +2480,7 @@ function ClientsList({ clients, onSelect, onNew, onExport, onDelete }) {
               </div>
             );
           })}
+          </div>
         </div>
       )}
     </div>
@@ -2515,7 +2519,7 @@ function SettingsView({ settings, onSave }) {
       {/* Company Info */}
       <div>
         <SectionTitle subtitle={t("settings_company_sub")}>{t("settings_company")}</SectionTitle>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Input label={t("settings_legal_name")} value={draft.company.legalName} onChange={v => update("company","legalName",v)} />
           <Input label={t("settings_rnc")} value={draft.company.rnc} onChange={v => update("company","rnc",v)} />
           <Input label={t("settings_address")} value={draft.company.address} onChange={v => update("company","address",v)} className="col-span-2" />
@@ -2529,7 +2533,7 @@ function SettingsView({ settings, onSave }) {
       <div>
         <SectionTitle subtitle={t("settings_bank_sub")}>{t("settings_bank")}</SectionTitle>
         <div className="p-4 bg-[#FDFBF6] border border-[#1A2342]/10 space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Input label={lang === "es" ? "Beneficiario / Beneficiary" : "Beneficiary / Beneficiario"} value={draft.bank.beneficiary} onChange={v => update("bank","beneficiary",v)} />
             <Input label={lang === "es" ? "Tipo de Cuenta / Account Type" : "Account Type / Tipo de Cuenta"} value={draft.bank.accountType} onChange={v => update("bank","accountType",v)} />
             <Input label={lang === "es" ? "Nombre del Banco / Bank Name" : "Bank Name / Nombre del Banco"} value={draft.bank.bankName} onChange={v => update("bank","bankName",v)} className="col-span-2" />
@@ -2543,7 +2547,7 @@ function SettingsView({ settings, onSave }) {
             <div className="text-[10px] uppercase tracking-[0.12em] text-[#1A2342]/60 mb-3" style={{ fontFamily: "'Manrope', sans-serif" }}>
               {t("settings_intermediary")}
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <Input label={lang === "es" ? "Banco Intermediario" : "Intermediary Bank"} value={draft.bank.intermediaryBank} onChange={v => update("bank","intermediaryBank",v)} />
               <Input label={lang === "es" ? "SWIFT del Intermediario" : "Intermediary SWIFT"} value={draft.bank.intermediarySwift} onChange={v => update("bank","intermediarySwift",v)} />
             </div>
@@ -2554,7 +2558,7 @@ function SettingsView({ settings, onSave }) {
       {/* Payment Settings */}
       <div>
         <SectionTitle subtitle={t("settings_payments_sub")}>{t("settings_payments")}</SectionTitle>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Input label={t("settings_validity")} type="number" value={draft.payments.validityDays} onChange={v => update("payments","validityDays",Number(v))} />
           <Input label={t("settings_email_comprobantes")} value={draft.payments.remittanceEmail} onChange={v => update("payments","remittanceEmail",v)} type="email" />
         </div>
@@ -2631,7 +2635,8 @@ function PaymentInstructionModal({ client, settings, onClose }) {
         </div>
 
         {/* Printable content */}
-        <div className="pdf-page bg-white text-[#1A2342] p-10 mx-auto" style={{ maxWidth: "210mm", minHeight: "297mm", fontFamily: "'Manrope', sans-serif", fontSize: "10pt" }}>
+        <div className="pdf-page bg-white text-[#1A2342] mx-auto" style={{ maxWidth: "210mm", minHeight: "297mm", fontFamily: "'Manrope', sans-serif", fontSize: "10pt", padding: "15mm 20mm", display: "flex", flexDirection: "column" }}>
+          <div style={{ flex: "1 0 auto" }}>
           {/* Header */}
           <div className="flex items-center justify-between pb-5 mb-6 border-b-2 border-[#1A2342]">
             <div>
@@ -2858,9 +2863,10 @@ function PaymentInstructionModal({ client, settings, onClose }) {
               <div style={{ fontSize: "9pt", whiteSpace: "pre-wrap" }}>{notes}</div>
             </div>
           )}
+          </div>
 
-          {/* Footer */}
-          <div style={{ position: "absolute", bottom: "15mm", left: "20mm", right: "20mm", paddingTop: "10pt", borderTop: "1px solid rgba(26,35,66,0.2)", fontSize: "7.5pt", color: "rgba(26,35,66,0.6)", letterSpacing: "0.05em" }} className="grid grid-cols-3 gap-4">
+          {/* Footer — sits at bottom via flex, no longer absolute */}
+          <div style={{ flexShrink: 0, marginTop: "20pt", paddingTop: "10pt", borderTop: "1px solid rgba(26,35,66,0.2)", fontSize: "7.5pt", color: "rgba(26,35,66,0.6)", letterSpacing: "0.05em" }} className="grid grid-cols-3 gap-4">
             <div>{settings.company.legalName}<br/>{settings.company.address}</div>
             <div className="text-center">
               Documento generado el<br/>
@@ -2893,7 +2899,7 @@ function PaymentInstructionModal({ client, settings, onClose }) {
 
       <SectionTitle subtitle={t("pi_details_sub")}>{t("pi_details")}</SectionTitle>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Select label={t("pi_concept")} value={concept} onChange={setConcept}
           options={CONCEPT_OPTIONS.map(o => ({ v: o, l: o }))} required />
         <Input label={t("pi_amount")} type="number" value={amount} onChange={setAmount}
@@ -3314,28 +3320,38 @@ export default function App() {
           .pdf-page {
             box-shadow: none !important;
             margin: 0 !important;
-            padding: 15mm 20mm !important;
             max-width: 100% !important;
+            min-height: 100vh !important;
           }
           /* Hide app chrome */
           .no-print { display: none !important; }
+          /* Page-break control: avoid splitting these blocks across pages */
+          .pdf-page table { page-break-inside: avoid; }
+          .pdf-page ol, .pdf-page ul { page-break-inside: avoid; }
+          .pdf-page h1, .pdf-page h2 { page-break-after: avoid; }
+        }
+
+        /* Responsive helpers for mobile */
+        @media (max-width: 767px) {
+          /* Tables that were grid-based become scrollable on mobile */
+          .mobile-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
         }
       `}</style>
 
       {/* Top Nav */}
       <div className="border-b border-[#1A2342]/10 bg-[#F5F1E8] sticky top-0 z-40 no-print">
-        <div className="max-w-7xl mx-auto px-8 py-4 flex items-center justify-between">
-          <button onClick={() => { setView("dashboard"); setSelectedClientId(null); }} className="flex items-center gap-3">
+        <div className="max-w-7xl mx-auto px-4 md:px-8 py-3 md:py-4 flex items-center justify-between gap-2">
+          <button onClick={() => { setView("dashboard"); setSelectedClientId(null); }} className="flex items-center gap-2 md:gap-3 flex-shrink-0">
             <img src="/logo.svg" alt="AMBAR" className="w-7 h-7 flex-shrink-0" />
-            <div className="text-left">
+            <div className="text-left hidden sm:block">
               <div className="text-[#1A2342]" style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: "1.2rem", fontWeight: 500, letterSpacing: "0.12em", lineHeight: 1 }}>
                 AMBAR
               </div>
-              <div className="text-[9px] uppercase tracking-[0.2em] text-[#1A2342]/50 mt-0.5">Client Management</div>
+              <div className="text-[9px] uppercase tracking-[0.2em] text-[#1A2342]/50 mt-0.5 hidden md:block">Client Management</div>
             </div>
           </button>
 
-          <nav className="flex gap-1">
+          <nav className="flex gap-0.5 md:gap-1 overflow-x-auto">
             {[
               { v: "dashboard", l: t("nav_dashboard"), icon: TrendingUp },
               { v: "clients",   l: t("nav_clients"),   icon: Users },
@@ -3346,32 +3362,36 @@ export default function App() {
               const active = view === item.v;
               return (
                 <button key={item.v} onClick={() => { setView(item.v); setSelectedClientId(null); }}
-                  className={`flex items-center gap-2 px-4 py-2 text-xs uppercase tracking-[0.12em] transition-colors ${active ? "text-[#1A2342] bg-[#1A2342]/5" : "text-[#1A2342]/60 hover:text-[#1A2342]"}`}>
+                  title={item.l}
+                  className={`flex items-center gap-2 px-2 md:px-4 py-2 text-xs uppercase tracking-[0.12em] transition-colors flex-shrink-0 ${active ? "text-[#1A2342] bg-[#1A2342]/5" : "text-[#1A2342]/60 hover:text-[#1A2342]"}`}>
                   <Icon className="w-3.5 h-3.5" strokeWidth={1.8} />
-                  {item.l}
+                  <span className="hidden lg:inline">{item.l}</span>
                 </button>
               );
             })}
           </nav>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 md:gap-2 flex-shrink-0">
             {/* Language toggle */}
             <button onClick={toggleLanguage}
-              className="flex items-center gap-1.5 px-3 py-1.5 border border-[#1A2342]/15 hover:border-[#1A2342]/40 transition-colors text-[11px] uppercase tracking-[0.12em] text-[#1A2342]/80"
+              className="flex items-center gap-1 md:gap-1.5 px-2 md:px-3 py-1.5 border border-[#1A2342]/15 hover:border-[#1A2342]/40 transition-colors text-[11px] uppercase tracking-[0.12em] text-[#1A2342]/80"
               title={language === "es" ? "Switch to English" : "Cambiar a Español"}>
               <Languages className="w-3.5 h-3.5" strokeWidth={1.8} />
-              <span className={language === "es" ? "text-[#1A2342] font-semibold" : "text-[#1A2342]/40"}>ES</span>
-              <span className="text-[#1A2342]/30">/</span>
-              <span className={language === "en" ? "text-[#1A2342] font-semibold" : "text-[#1A2342]/40"}>EN</span>
+              <span className={`hidden sm:inline ${language === "es" ? "text-[#1A2342] font-semibold" : "text-[#1A2342]/40"}`}>ES</span>
+              <span className="text-[#1A2342]/30 hidden sm:inline">/</span>
+              <span className={`hidden sm:inline ${language === "en" ? "text-[#1A2342] font-semibold" : "text-[#1A2342]/40"}`}>EN</span>
+              <span className="sm:hidden text-[#1A2342] font-semibold">{language.toUpperCase()}</span>
             </button>
             <Button onClick={handleExport} variant="ghost" size="sm" icon={exporting ? Loader2 : FileDown} disabled={exporting}>
-              {exporting ? t("exporting") : "Excel"}
+              <span className="hidden md:inline">{exporting ? t("exporting") : "Excel"}</span>
             </Button>
-            <Button onClick={openNew} variant="primary" size="sm" icon={Plus}>{t("new_client_short")}</Button>
+            <Button onClick={openNew} variant="primary" size="sm" icon={Plus}>
+              <span className="hidden md:inline">{t("new_client_short")}</span>
+            </Button>
 
             {/* User indicator & logout */}
-            <div className="flex items-center gap-2 pl-2 ml-1 border-l border-[#1A2342]/15">
-              <div className="text-[10px] text-[#1A2342]/60 hidden md:block max-w-[140px] truncate" title={session?.user?.email}>
+            <div className="flex items-center gap-1 md:gap-2 pl-1 md:pl-2 ml-0.5 md:ml-1 border-l border-[#1A2342]/15">
+              <div className="text-[10px] text-[#1A2342]/60 hidden xl:block max-w-[140px] truncate" title={session?.user?.email}>
                 {session?.user?.email}
               </div>
               <button onClick={handleSignOut}
@@ -3385,7 +3405,7 @@ export default function App() {
       </div>
 
       {/* Main content */}
-      <div className="max-w-7xl mx-auto px-8 py-10">
+      <div className="max-w-7xl mx-auto px-4 md:px-8 py-6 md:py-10">
         {selectedClient ? (
           <div>
             <button onClick={() => setSelectedClientId(null)} className="flex items-center gap-2 text-xs uppercase tracking-[0.12em] text-[#1A2342]/60 hover:text-[#1A2342] mb-6 no-print">
@@ -3427,7 +3447,7 @@ export default function App() {
       </div>
 
       {/* Footer */}
-      <div className="max-w-7xl mx-auto px-8 py-6 border-t border-[#1A2342]/10 mt-12 no-print">
+      <div className="max-w-7xl mx-auto px-4 md:px-8 py-6 border-t border-[#1A2342]/10 mt-12 no-print">
         <div className="flex items-center justify-between text-[10px] text-[#1A2342]/40 uppercase tracking-[0.15em]">
           <span>{t("footer_copyright")}</span>
           <span>{t("footer_compliance")}</span>
