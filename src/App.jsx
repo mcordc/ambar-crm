@@ -1,13 +1,20 @@
 import React, { useState, useEffect, useMemo, useCallback, useContext, createContext } from "react";
 import * as XLSX from "xlsx";
+import { createClient } from "@supabase/supabase-js";
 import {
   Users, Home, DollarSign, FileDown, Plus, Search, Edit3, Trash2,
   X, Check, Download, Upload, Filter, ChevronDown, ChevronRight,
   Building2, UserCircle, Shield, CreditCard, ClipboardList,
   AlertCircle, TrendingUp, Eye, ArrowLeft, MapPin, Calendar,
   FileText, Phone, Mail, Globe, Briefcase, Copy, Loader2,
-  Settings, Printer, Receipt, Languages
+  Settings, Printer, Receipt, Languages, LogOut, Lock
 } from "lucide-react";
+
+// ------------------------- Supabase Client -------------------------
+const supabase = createClient(
+  import.meta.env.VITE_SUPABASE_URL,
+  import.meta.env.VITE_SUPABASE_ANON_KEY
+);
 
 /* ========================================================================
    AMBAR LONGEVITY ESTATE — Client Relationship Management System
@@ -717,10 +724,103 @@ const paidPercentage = (client) => {
   return Math.min(100, (paidAmount(client) / total) * 100);
 };
 
-// ------------------------- Storage Layer -------------------------
+// ------------------------- Storage Layer (Supabase) -------------------------
 
-const STORAGE_KEY = "ambar_crm_v1";
-const SETTINGS_KEY = "ambar_settings_v1";
+// Cargar todos los clientes desde Supabase
+async function loadClientsFromDB() {
+  try {
+    const { data, error } = await supabase
+      .from("clients")
+      .select("id, data")
+      .order("updated_at", { ascending: false });
+    if (error) throw error;
+    return (data || []).map(row => row.data);
+  } catch (e) {
+    console.error("Load clients error:", e);
+    return [];
+  }
+}
+
+// Guardar (crear o actualizar) un cliente en Supabase
+async function saveClientToDB(client) {
+  try {
+    const { data: userData } = await supabase.auth.getUser();
+    const userId = userData?.user?.id;
+    const { error } = await supabase
+      .from("clients")
+      .upsert({
+        id: client.id,
+        data: client,
+        updated_by: userId,
+        ...(client.createdAt ? {} : { created_by: userId })
+      }, { onConflict: "id" });
+    if (error) throw error;
+    return true;
+  } catch (e) {
+    console.error("Save client error:", e);
+    return false;
+  }
+}
+
+// Eliminar un cliente
+async function deleteClientFromDB(clientId) {
+  try {
+    const { error } = await supabase.from("clients").delete().eq("id", clientId);
+    if (error) throw error;
+    return true;
+  } catch (e) {
+    console.error("Delete client error:", e);
+    return false;
+  }
+}
+
+// Cargar configuración global
+async function loadSettingsFromDB() {
+  try {
+    const { data, error } = await supabase
+      .from("settings")
+      .select("data")
+      .eq("id", 1)
+      .single();
+    if (error) throw error;
+    return data?.data || null;
+  } catch (e) {
+    console.error("Load settings error:", e);
+    return null;
+  }
+}
+
+// Guardar configuración global
+async function saveSettingsToDB(settings) {
+  try {
+    const { data: userData } = await supabase.auth.getUser();
+    const userId = userData?.user?.id;
+    const { error } = await supabase
+      .from("settings")
+      .update({ data: settings, updated_by: userId })
+      .eq("id", 1);
+    if (error) throw error;
+    return true;
+  } catch (e) {
+    console.error("Save settings error:", e);
+    return false;
+  }
+}
+
+// Cargar preferencia de idioma desde localStorage (esto se queda local, es preferencia de UI)
+function loadLanguage() {
+  try {
+    return localStorage.getItem("ambar_lang") || "es";
+  } catch {
+    return "es";
+  }
+}
+
+function saveLanguage(lang) {
+  try {
+    localStorage.setItem("ambar_lang", lang);
+  } catch {}
+}
 
 const DEFAULT_SETTINGS = {
   company: {
@@ -2474,7 +2574,138 @@ function PaymentInstructionModal({ client, settings, onClose }) {
 
 
 
+// ------------------------- Login View -------------------------
+
+function LoginView({ language, onToggleLanguage }) {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  const isES = language === "es";
+
+  const handleLogin = async (e) => {
+    if (e) e.preventDefault();
+    setError(null);
+    setLoading(true);
+    try {
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) throw error;
+    } catch (err) {
+      setError(err.message || (isES ? "Error de inicio de sesión" : "Login error"));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const onKeyDown = (e) => {
+    if (e.key === "Enter") handleLogin();
+  };
+
+  return (
+    <div className="min-h-screen bg-[#F5F1E8] flex items-center justify-center p-6 relative"
+      style={{ fontFamily: "'Manrope', sans-serif" }}>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500;600&family=Manrope:wght@300;400;500;600;700&display=swap');
+      `}</style>
+
+      {/* Language toggle top-right */}
+      <button onClick={onToggleLanguage}
+        className="absolute top-6 right-6 flex items-center gap-1.5 px-3 py-1.5 border border-[#1A2342]/15 hover:border-[#1A2342]/40 transition-colors text-[11px] uppercase tracking-[0.12em] text-[#1A2342]/80 bg-white/50">
+        <Languages className="w-3.5 h-3.5" strokeWidth={1.8} />
+        <span className={language === "es" ? "text-[#1A2342] font-semibold" : "text-[#1A2342]/40"}>ES</span>
+        <span className="text-[#1A2342]/30">/</span>
+        <span className={language === "en" ? "text-[#1A2342] font-semibold" : "text-[#1A2342]/40"}>EN</span>
+      </button>
+
+      <div className="w-full max-w-md">
+        {/* Brand header */}
+        <div className="text-center mb-10">
+          <div className="flex justify-center mb-4">
+            <svg width="56" height="56" viewBox="0 0 100 100" fill="none">
+              <path d="M20 70 Q 50 30, 80 70 L 65 70 Q 50 50, 35 70 Z" fill="#1A2342" />
+            </svg>
+          </div>
+          <h1 className="text-[#1A2342]"
+            style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: "2.25rem", fontWeight: 400, letterSpacing: "0.12em", lineHeight: 1 }}>
+            AMBAR
+          </h1>
+          <div className="text-[10px] uppercase tracking-[0.25em] text-[#4A6FA5] mt-2">
+            Longevity Estate
+          </div>
+          <div className="text-[10px] uppercase tracking-[0.2em] text-[#1A2342]/50 mt-6">
+            {isES ? "Sistema de gestión de clientes" : "Client management system"}
+          </div>
+        </div>
+
+        {/* Login card */}
+        <div className="bg-white border border-[#1A2342]/15 p-8">
+          <div className="flex items-center gap-2 mb-6">
+            <Lock className="w-4 h-4 text-[#1A2342]/60" strokeWidth={1.5} />
+            <h2 className="text-[#1A2342] text-sm uppercase tracking-[0.15em]">
+              {isES ? "Iniciar Sesión" : "Sign In"}
+            </h2>
+          </div>
+
+          <div className="space-y-4">
+            <div>
+              <label className="block text-[10px] uppercase tracking-[0.12em] text-[#1A2342]/60 mb-1.5">
+                {isES ? "Correo Electrónico" : "Email"}
+              </label>
+              <input type="email" value={email} onChange={e => setEmail(e.target.value)} onKeyDown={onKeyDown}
+                placeholder={isES ? "tu@email.com" : "you@email.com"} autoComplete="email" autoFocus
+                className="w-full px-3 py-2.5 bg-[#FDFBF6] border border-[#1A2342]/15 focus:border-[#4A6FA5] focus:outline-none text-sm text-[#1A2342]" />
+            </div>
+
+            <div>
+              <label className="block text-[10px] uppercase tracking-[0.12em] text-[#1A2342]/60 mb-1.5">
+                {isES ? "Contraseña" : "Password"}
+              </label>
+              <input type="password" value={password} onChange={e => setPassword(e.target.value)} onKeyDown={onKeyDown}
+                autoComplete="current-password"
+                className="w-full px-3 py-2.5 bg-[#FDFBF6] border border-[#1A2342]/15 focus:border-[#4A6FA5] focus:outline-none text-sm text-[#1A2342]" />
+            </div>
+
+            {error && (
+              <div className="p-3 bg-[#F3DDD9] border-l-2 border-[#B04B3F] flex items-start gap-2">
+                <AlertCircle className="w-4 h-4 text-[#B04B3F] flex-shrink-0 mt-0.5" strokeWidth={1.5} />
+                <div className="text-xs text-[#B04B3F]">{error}</div>
+              </div>
+            )}
+
+            <button onClick={handleLogin} disabled={loading || !email || !password}
+              className="w-full py-3 bg-[#1A2342] text-[#F5F1E8] text-xs uppercase tracking-[0.15em] hover:bg-[#2A3556] disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2">
+              {loading ? (
+                <>
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" strokeWidth={2} />
+                  {isES ? "Verificando..." : "Verifying..."}
+                </>
+              ) : (
+                isES ? "Entrar" : "Sign In"
+              )}
+            </button>
+
+            <div className="text-[11px] text-[#1A2342]/50 text-center pt-2">
+              {isES
+                ? "Solo personal autorizado. Contacta al administrador si necesitas acceso."
+                : "Authorized personnel only. Contact the administrator if you need access."}
+            </div>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="text-center mt-8 text-[10px] uppercase tracking-[0.15em] text-[#1A2342]/40">
+          © 2026 Cumbre Azul Company SRL
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
 export default function App() {
+  const [session, setSession] = useState(null);
+  const [authChecking, setAuthChecking] = useState(true);
   const [clients, setClients] = useState([]);
   const [settings, setSettings] = useState(DEFAULT_SETTINGS);
   const [language, setLanguage] = useState("es");
@@ -2492,34 +2723,87 @@ export default function App() {
     return (TRANSLATIONS[language] && TRANSLATIONS[language][key]) || TRANSLATIONS.es[key] || key;
   }, [language]);
 
-  // Load on mount
+  // --------- Auth: check session & subscribe to changes ---------
   useEffect(() => {
+    // Cargar idioma (local, no requiere auth)
+    setLanguage(loadLanguage());
+
+    // Verificar sesión activa
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setAuthChecking(false);
+    });
+
+    // Suscribirse a cambios de auth (login/logout)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, newSession) => {
+      setSession(newSession);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  // --------- Cargar datos de Supabase cuando hay sesión ---------
+  useEffect(() => {
+    if (!session) return;
+
     (async () => {
-      const data = await storageGet(STORAGE_KEY);
-      if (data && data.clients) setClients(data.clients);
-      const s = await storageGet(SETTINGS_KEY);
-      if (s) setSettings({ ...DEFAULT_SETTINGS, ...s, company: { ...DEFAULT_SETTINGS.company, ...(s.company || {}) }, bank: { ...DEFAULT_SETTINGS.bank, ...(s.bank || {}) }, payments: { ...DEFAULT_SETTINGS.payments, ...(s.payments || {}) } });
-      const lang = await storageGet("ambar_lang_v1");
-      if (lang && (lang === "es" || lang === "en")) setLanguage(lang);
+      setLoading(true);
+      const loadedClients = await loadClientsFromDB();
+      setClients(loadedClients);
+
+      const s = await loadSettingsFromDB();
+      if (s && Object.keys(s).length > 0) {
+        setSettings({
+          ...DEFAULT_SETTINGS,
+          ...s,
+          company: { ...DEFAULT_SETTINGS.company, ...(s.company || {}) },
+          bank: { ...DEFAULT_SETTINGS.bank, ...(s.bank || {}) },
+          payments: { ...DEFAULT_SETTINGS.payments, ...(s.payments || {}) }
+        });
+      }
       setLoading(false);
     })();
-  }, []);
+  }, [session]);
 
-  const toggleLanguage = useCallback(async () => {
-    const next = language === "es" ? "en" : "es";
-    setLanguage(next);
-    await storageSet("ambar_lang_v1", next);
-  }, [language]);
+  // --------- Realtime: sync cuando otro usuario hace cambios ---------
+  useEffect(() => {
+    if (!session) return;
 
-  // Persist
-  const persist = useCallback(async (nextClients) => {
-    setClients(nextClients);
-    await storageSet(STORAGE_KEY, { clients: nextClients, updatedAt: new Date().toISOString() });
-  }, []);
+    const channel = supabase
+      .channel("clients-realtime")
+      .on("postgres_changes",
+        { event: "*", schema: "public", table: "clients" },
+        async () => {
+          const fresh = await loadClientsFromDB();
+          setClients(fresh);
+        }
+      )
+      .on("postgres_changes",
+        { event: "*", schema: "public", table: "settings" },
+        async () => {
+          const s = await loadSettingsFromDB();
+          if (s && Object.keys(s).length > 0) {
+            setSettings(prev => ({
+              ...prev,
+              ...s,
+              company: { ...prev.company, ...(s.company || {}) },
+              bank: { ...prev.bank, ...(s.bank || {}) },
+              payments: { ...prev.payments, ...(s.payments || {}) }
+            }));
+          }
+        }
+      )
+      .subscribe();
 
-  const saveSettings = useCallback(async (next) => {
-    setSettings(next);
-    await storageSet(SETTINGS_KEY, next);
+    return () => { supabase.removeChannel(channel); };
+  }, [session]);
+
+  const toggleLanguage = useCallback(() => {
+    setLanguage(prev => {
+      const next = prev === "es" ? "en" : "es";
+      saveLanguage(next);
+      return next;
+    });
   }, []);
 
   const showToast = (msg, type = "success") => {
@@ -2527,23 +2811,37 @@ export default function App() {
     setTimeout(() => setToast(null), 2500);
   };
 
+  const saveSettings = useCallback(async (next) => {
+    setSettings(next);
+    await saveSettingsToDB(next);
+  }, []);
+
   const handleSave = async (client) => {
     const existing = clients.findIndex(c => c.id === client.id);
+    const ok = await saveClientToDB(client);
+    if (!ok) {
+      alert(language === "es" ? "Error al guardar. Verifica tu conexión." : "Save failed. Check your connection.");
+      return;
+    }
     let next;
     if (existing >= 0) {
       next = clients.map(c => c.id === client.id ? client : c);
     } else {
       next = [...clients, client];
     }
-    await persist(next);
+    setClients(next);
     setFormOpen(false);
     setFormInitial(null);
     showToast(existing >= 0 ? t("toast_updated") : t("toast_created"));
   };
 
   const handleDelete = async (id) => {
-    const next = clients.filter(c => c.id !== id);
-    await persist(next);
+    const ok = await deleteClientFromDB(id);
+    if (!ok) {
+      alert(language === "es" ? "Error al eliminar." : "Delete failed.");
+      return;
+    }
+    setClients(clients.filter(c => c.id !== id));
     setSelectedClientId(null);
     showToast(t("toast_deleted"));
   };
@@ -2564,10 +2862,35 @@ export default function App() {
     setExporting(false);
   };
 
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    setClients([]);
+    setSettings(DEFAULT_SETTINGS);
+    setView("dashboard");
+    setSelectedClientId(null);
+  };
+
   const openNew = () => { setFormInitial(null); setFormOpen(true); };
   const openEdit = (client) => { setFormInitial(client); setFormOpen(true); };
 
   const selectedClient = selectedClientId ? clients.find(c => c.id === selectedClientId) : null;
+
+  // Auth: verificando sesión inicial
+  if (authChecking) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#F5F1E8]">
+        <div className="flex items-center gap-3 text-[#1A2342]/60" style={{ fontFamily: "'Manrope', sans-serif" }}>
+          <Loader2 className="w-4 h-4 animate-spin" strokeWidth={1.5} />
+          <span className="text-sm">{language === "es" ? "Verificando sesión..." : "Checking session..."}</span>
+        </div>
+      </div>
+    );
+  }
+
+  // Auth: no hay sesión → mostrar login
+  if (!session) {
+    return <LoginView language={language} onToggleLanguage={toggleLanguage} />;
+  }
 
   if (loading) {
     return (
@@ -2620,7 +2943,9 @@ export default function App() {
       <div className="border-b border-[#1A2342]/10 bg-[#F5F1E8] sticky top-0 z-40 no-print">
         <div className="max-w-7xl mx-auto px-8 py-4 flex items-center justify-between">
           <button onClick={() => { setView("dashboard"); setSelectedClientId(null); }} className="flex items-center gap-3">
-            <img src="/logo.svg" alt="AMBAR" className="w-7 h-7 flex-shrink-0" />
+            <svg width="28" height="28" viewBox="0 0 100 100" fill="none" className="flex-shrink-0">
+              <path d="M20 70 Q 50 30, 80 70 L 65 70 Q 50 50, 35 70 Z" fill="#1A2342" />
+            </svg>
             <div className="text-left">
               <div className="text-[#1A2342]" style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: "1.2rem", fontWeight: 500, letterSpacing: "0.12em", lineHeight: 1 }}>
                 AMBAR
@@ -2662,6 +2987,18 @@ export default function App() {
               {exporting ? t("exporting") : "Excel"}
             </Button>
             <Button onClick={openNew} variant="primary" size="sm" icon={Plus}>{t("new_client_short")}</Button>
+
+            {/* User indicator & logout */}
+            <div className="flex items-center gap-2 pl-2 ml-1 border-l border-[#1A2342]/15">
+              <div className="text-[10px] text-[#1A2342]/60 hidden md:block max-w-[140px] truncate" title={session?.user?.email}>
+                {session?.user?.email}
+              </div>
+              <button onClick={handleSignOut}
+                className="p-1.5 hover:bg-[#1A2342]/5 text-[#1A2342]/60 hover:text-[#B04B3F] transition-colors"
+                title={language === "es" ? "Cerrar sesión" : "Sign out"}>
+                <LogOut className="w-3.5 h-3.5" strokeWidth={1.5} />
+              </button>
+            </div>
           </div>
         </div>
       </div>
