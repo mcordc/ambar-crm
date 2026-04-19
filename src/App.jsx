@@ -7,7 +7,8 @@ import {
   Building2, UserCircle, Shield, CreditCard, ClipboardList,
   AlertCircle, TrendingUp, Eye, ArrowLeft, MapPin, Calendar,
   FileText, Phone, Mail, Globe, Briefcase, Copy, Loader2,
-  Settings, Printer, Receipt, Languages, LogOut, Lock
+  Settings, Printer, Receipt, Languages, LogOut, Lock,
+  FolderOpen, File, FileImage, Paperclip
 } from "lucide-react";
 
 // ------------------------- Supabase Client -------------------------
@@ -376,6 +377,36 @@ const TRANSLATIONS = {
     marital_divorced: "Divorciado/a",
     marital_widowed: "Viudo/a",
     marital_partnership: "Unión Libre",
+    // Documents
+    tab_documents: "Documentos",
+    doc_section: "Documentos Adjuntos",
+    doc_section_sub: "Cédula, pasaporte, carta bancaria, y otros documentos de cumplimiento",
+    doc_upload: "Subir Documento",
+    doc_upload_help: "Arrastra archivos aquí o haz clic para seleccionar",
+    doc_type: "Tipo de Documento",
+    doc_type_placeholder: "Seleccionar tipo",
+    doc_type_passport: "Pasaporte",
+    doc_type_cedula: "Cédula",
+    doc_type_drivers: "Licencia de Conducir",
+    doc_type_bank_ref: "Carta de Referencia Bancaria",
+    doc_type_proof_address: "Justificante de Domicilio",
+    doc_type_funds_proof: "Evidencia de Origen de Fondos",
+    doc_type_articles: "Artículos de Incorporación",
+    doc_type_good_standing: "Certificado de Vigencia",
+    doc_type_shareholders: "Lista de Accionistas",
+    doc_type_contract: "Contrato",
+    doc_type_kyc_form: "Formulario KYC",
+    doc_type_other: "Otro",
+    doc_no_documents: "No hay documentos adjuntos aún",
+    doc_uploading: "Subiendo...",
+    doc_uploaded_at: "Subido",
+    doc_view: "Ver",
+    doc_download: "Descargar",
+    doc_delete: "Eliminar",
+    doc_confirm_delete: "¿Eliminar este documento permanentemente?",
+    doc_file_too_large: "El archivo excede 50 MB",
+    doc_upload_error: "Error al subir el documento",
+    doc_type_required: "Selecciona el tipo de documento primero",
   },
   en: {
     // Brand
@@ -672,6 +703,36 @@ const TRANSLATIONS = {
     marital_divorced: "Divorced",
     marital_widowed: "Widowed",
     marital_partnership: "Domestic Partnership",
+    // Documents
+    tab_documents: "Documents",
+    doc_section: "Attached Documents",
+    doc_section_sub: "ID, passport, bank letter, and other compliance documents",
+    doc_upload: "Upload Document",
+    doc_upload_help: "Drag files here or click to select",
+    doc_type: "Document Type",
+    doc_type_placeholder: "Select type",
+    doc_type_passport: "Passport",
+    doc_type_cedula: "Cédula (Dom. ID)",
+    doc_type_drivers: "Driver's License",
+    doc_type_bank_ref: "Bank Reference Letter",
+    doc_type_proof_address: "Proof of Address",
+    doc_type_funds_proof: "Source of Funds Evidence",
+    doc_type_articles: "Articles of Incorporation",
+    doc_type_good_standing: "Certificate of Good Standing",
+    doc_type_shareholders: "Shareholders List",
+    doc_type_contract: "Contract",
+    doc_type_kyc_form: "KYC Form",
+    doc_type_other: "Other",
+    doc_no_documents: "No documents attached yet",
+    doc_uploading: "Uploading...",
+    doc_uploaded_at: "Uploaded",
+    doc_view: "View",
+    doc_download: "Download",
+    doc_delete: "Delete",
+    doc_confirm_delete: "Permanently delete this document?",
+    doc_file_too_large: "File exceeds 50 MB",
+    doc_upload_error: "Error uploading document",
+    doc_type_required: "Select the document type first",
   },
 };
 
@@ -805,6 +866,66 @@ async function saveSettingsToDB(settings) {
     console.error("Save settings error:", e);
     return false;
   }
+}
+
+// ------------------------- Document Storage (Supabase Storage) -------------------------
+
+const DOCUMENTS_BUCKET = "client-documents";
+const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50 MB
+
+// Subir un documento para un cliente
+async function uploadClientDocument(clientId, file, documentType) {
+  if (file.size > MAX_FILE_SIZE) {
+    throw new Error("File exceeds 50 MB");
+  }
+  const timestamp = Date.now();
+  const sanitizedName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+  const path = `${clientId}/${timestamp}_${documentType}_${sanitizedName}`;
+
+  const { error } = await supabase.storage
+    .from(DOCUMENTS_BUCKET)
+    .upload(path, file, { cacheControl: "3600", upsert: false });
+
+  if (error) throw error;
+
+  return {
+    path,
+    name: file.name,
+    type: documentType,
+    mimeType: file.type,
+    size: file.size,
+    uploadedAt: new Date().toISOString(),
+  };
+}
+
+// Obtener URL firmada para ver/descargar un documento (válida 1 hora)
+async function getDocumentUrl(path) {
+  const { data, error } = await supabase.storage
+    .from(DOCUMENTS_BUCKET)
+    .createSignedUrl(path, 3600);
+  if (error) throw error;
+  return data.signedUrl;
+}
+
+// Eliminar un documento
+async function deleteDocument(path) {
+  const { error } = await supabase.storage
+    .from(DOCUMENTS_BUCKET)
+    .remove([path]);
+  if (error) throw error;
+  return true;
+}
+
+// Listar documentos de un cliente (por si la lista local se pierde)
+async function listClientDocuments(clientId) {
+  const { data, error } = await supabase.storage
+    .from(DOCUMENTS_BUCKET)
+    .list(clientId);
+  if (error) {
+    console.error("List documents error:", error);
+    return [];
+  }
+  return data || [];
 }
 
 // Cargar preferencia de idioma desde localStorage (esto se queda local, es preferencia de UI)
@@ -1157,6 +1278,207 @@ const EmptyState = ({ icon: Icon, title, subtitle, action }) => (
 
 // ------------------------- Client Form -------------------------
 
+// ------------------------- Documents Section -------------------------
+
+function DocumentsSection({ clientId, documents, onDocumentsChange }) {
+  const { t } = useT();
+  const [uploading, setUploading] = useState(false);
+  const [selectedType, setSelectedType] = useState("");
+  const [dragActive, setDragActive] = useState(false);
+  const [error, setError] = useState(null);
+
+  const DOC_TYPES = [
+    { v: "passport",        l: t("doc_type_passport") },
+    { v: "cedula",          l: t("doc_type_cedula") },
+    { v: "drivers_license", l: t("doc_type_drivers") },
+    { v: "bank_reference",  l: t("doc_type_bank_ref") },
+    { v: "proof_address",   l: t("doc_type_proof_address") },
+    { v: "funds_proof",     l: t("doc_type_funds_proof") },
+    { v: "articles",        l: t("doc_type_articles") },
+    { v: "good_standing",   l: t("doc_type_good_standing") },
+    { v: "shareholders",    l: t("doc_type_shareholders") },
+    { v: "contract",        l: t("doc_type_contract") },
+    { v: "kyc_form",        l: t("doc_type_kyc_form") },
+    { v: "other",           l: t("doc_type_other") },
+  ];
+
+  const handleFiles = async (files) => {
+    if (!files || files.length === 0) return;
+    if (!selectedType) {
+      setError(t("doc_type_required"));
+      return;
+    }
+    setError(null);
+    setUploading(true);
+    try {
+      const newDocs = [];
+      for (const file of files) {
+        if (file.size > MAX_FILE_SIZE) {
+          throw new Error(`${file.name}: ${t("doc_file_too_large")}`);
+        }
+        const doc = await uploadClientDocument(clientId, file, selectedType);
+        newDocs.push(doc);
+      }
+      onDocumentsChange([...(documents || []), ...newDocs]);
+      setSelectedType(""); // reset after upload
+    } catch (e) {
+      console.error(e);
+      setError(e.message || t("doc_upload_error"));
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleFileInput = (e) => {
+    handleFiles(Array.from(e.target.files || []));
+    e.target.value = ""; // reset para permitir subir el mismo archivo otra vez
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    setDragActive(false);
+    handleFiles(Array.from(e.dataTransfer.files || []));
+  };
+
+  const handleView = async (doc) => {
+    try {
+      const url = await getDocumentUrl(doc.path);
+      window.open(url, "_blank");
+    } catch (e) {
+      alert(e.message);
+    }
+  };
+
+  const handleDelete = async (doc) => {
+    if (!confirm(t("doc_confirm_delete"))) return;
+    try {
+      await deleteDocument(doc.path);
+      onDocumentsChange(documents.filter(d => d.path !== doc.path));
+    } catch (e) {
+      alert(e.message);
+    }
+  };
+
+  const getIcon = (mimeType) => {
+    if (mimeType?.startsWith("image/")) return FileImage;
+    return File;
+  };
+
+  const fmtFileSize = (bytes) => {
+    if (bytes < 1024) return bytes + " B";
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB";
+    return (bytes / (1024 * 1024)).toFixed(1) + " MB";
+  };
+
+  const getDocTypeLabel = (type) => {
+    const opt = DOC_TYPES.find(d => d.v === type);
+    return opt ? opt.l : type;
+  };
+
+  return (
+    <div className="space-y-6">
+      <SectionTitle subtitle={t("doc_section_sub")}>{t("doc_section")}</SectionTitle>
+
+      {/* Upload zone */}
+      <div className="space-y-3">
+        <Select label={t("doc_type")} value={selectedType} onChange={setSelectedType}
+          options={DOC_TYPES} placeholder={t("doc_type_placeholder")} />
+
+        <div
+          onDragEnter={(e) => { e.preventDefault(); setDragActive(true); }}
+          onDragOver={(e) => { e.preventDefault(); setDragActive(true); }}
+          onDragLeave={() => setDragActive(false)}
+          onDrop={handleDrop}
+          className={`relative border-2 border-dashed p-8 text-center transition-all ${
+            dragActive
+              ? "border-[#4A6FA5] bg-[#E3EBF5]"
+              : uploading
+              ? "border-[#C9A961] bg-[#F4EBD4]"
+              : "border-[#1A2342]/20 bg-[#FDFBF6] hover:border-[#1A2342]/40"
+          }`}
+        >
+          <input type="file" multiple onChange={handleFileInput} disabled={uploading || !selectedType}
+            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed"
+            accept="image/*,application/pdf,.doc,.docx,.xls,.xlsx" />
+          <div className="flex flex-col items-center gap-2 pointer-events-none">
+            {uploading ? (
+              <>
+                <Loader2 className="w-6 h-6 text-[#C9A961] animate-spin" strokeWidth={1.5} />
+                <div className="text-sm text-[#1A2342]" style={{ fontFamily: "'Manrope', sans-serif" }}>
+                  {t("doc_uploading")}
+                </div>
+              </>
+            ) : (
+              <>
+                <Upload className="w-6 h-6 text-[#1A2342]/50" strokeWidth={1.5} />
+                <div className="text-sm text-[#1A2342]" style={{ fontFamily: "'Manrope', sans-serif" }}>
+                  {t("doc_upload_help")}
+                </div>
+                <div className="text-[11px] text-[#1A2342]/50" style={{ fontFamily: "'Manrope', sans-serif" }}>
+                  PDF · JPG · PNG · DOC · XLS · Max 50 MB
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+
+        {error && (
+          <div className="p-3 bg-[#F3DDD9] border-l-2 border-[#B04B3F] flex items-start gap-2">
+            <AlertCircle className="w-4 h-4 text-[#B04B3F] flex-shrink-0 mt-0.5" strokeWidth={1.5} />
+            <div className="text-sm text-[#B04B3F]" style={{ fontFamily: "'Manrope', sans-serif" }}>{error}</div>
+          </div>
+        )}
+      </div>
+
+      {/* Documents list */}
+      <div>
+        {(!documents || documents.length === 0) ? (
+          <div className="p-6 text-center text-sm text-[#1A2342]/50 bg-[#FDFBF6] border border-dashed border-[#1A2342]/20"
+            style={{ fontFamily: "'Manrope', sans-serif" }}>
+            {t("doc_no_documents")}
+          </div>
+        ) : (
+          <div className="space-y-1.5">
+            {documents.map((doc, idx) => {
+              const Icon = getIcon(doc.mimeType);
+              return (
+                <div key={doc.path || idx}
+                  className="flex items-center gap-3 p-3 bg-[#FDFBF6] border border-[#1A2342]/10 hover:border-[#1A2342]/25 transition-colors group">
+                  <Icon className="w-5 h-5 text-[#4A6FA5] flex-shrink-0" strokeWidth={1.5} />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-[#1A2342] truncate" style={{ fontFamily: "'Manrope', sans-serif" }}>
+                        {doc.name}
+                      </span>
+                      <Badge color="#1A2342" bg="#D9DDE8">{getDocTypeLabel(doc.type)}</Badge>
+                    </div>
+                    <div className="text-[11px] text-[#1A2342]/50" style={{ fontFamily: "'Manrope', sans-serif" }}>
+                      {fmtFileSize(doc.size || 0)} · {t("doc_uploaded_at")} {fmtDate(doc.uploadedAt)}
+                    </div>
+                  </div>
+                  <div className="flex gap-1 opacity-60 group-hover:opacity-100 transition-opacity">
+                    <button onClick={() => handleView(doc)}
+                      className="p-2 hover:bg-[#1A2342]/10 transition-colors"
+                      title={t("doc_view")}>
+                      <Eye className="w-4 h-4 text-[#1A2342]" strokeWidth={1.5} />
+                    </button>
+                    <button onClick={() => handleDelete(doc)}
+                      className="p-2 hover:bg-[#B04B3F]/10 text-[#1A2342] hover:text-[#B04B3F] transition-colors"
+                      title={t("doc_delete")}>
+                      <Trash2 className="w-4 h-4" strokeWidth={1.5} />
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+
 function ClientForm({ initial, onSave, onCancel }) {
   const { t, lang } = useT();
   const [tab, setTab] = useState("type");
@@ -1179,12 +1501,13 @@ function ClientForm({ initial, onSave, onCancel }) {
   const update = (patch) => setData(d => ({ ...d, ...patch, updatedAt: new Date().toISOString() }));
 
   const tabs = [
-    { v: "type",     l: t("tab_type"),     icon: UserCircle },
-    { v: "personal", l: t("tab_personal"), icon: FileText },
-    { v: "villa",    l: t("tab_villa"),    icon: Home },
-    { v: "aml",      l: t("tab_aml"),      icon: Shield },
-    { v: "payments", l: t("tab_payments"), icon: CreditCard },
-    { v: "notes",    l: t("tab_notes"),    icon: ClipboardList },
+    { v: "type",      l: t("tab_type"),      icon: UserCircle },
+    { v: "personal",  l: t("tab_personal"),  icon: FileText },
+    { v: "villa",     l: t("tab_villa"),     icon: Home },
+    { v: "aml",       l: t("tab_aml"),       icon: Shield },
+    { v: "payments",  l: t("tab_payments"),  icon: CreditCard },
+    { v: "documents", l: t("tab_documents"), icon: Paperclip },
+    { v: "notes",     l: t("tab_notes"),     icon: ClipboardList },
   ];
 
   const pricing = computePrice(data);
@@ -1510,6 +1833,15 @@ function ClientForm({ initial, onSave, onCancel }) {
         </div>
       )}
 
+      {/* Tab: Documents */}
+      {tab === "documents" && (
+        <DocumentsSection
+          clientId={data.id}
+          documents={data.documents || []}
+          onDocumentsChange={(docs) => update({ documents: docs })}
+        />
+      )}
+
       {/* Tab: Notes */}
       {tab === "notes" && (
         <div className="space-y-6">
@@ -1734,6 +2066,52 @@ function ClientDetail({ client, onEdit, onClose, onDelete, onGeneratePayment }) 
           <SectionTitle>{t("cd_notes")}</SectionTitle>
           <div className="p-4 bg-[#FDFBF6] text-sm text-[#1A2342] whitespace-pre-wrap border border-[#1A2342]/10" style={{ fontFamily: "'Manrope', sans-serif" }}>
             {client.notes}
+          </div>
+        </div>
+      )}
+
+      {/* Documents */}
+      {client.documents && client.documents.length > 0 && (
+        <div>
+          <SectionTitle>{t("doc_section")}</SectionTitle>
+          <div className="space-y-1.5">
+            {client.documents.map((doc, idx) => (
+              <div key={doc.path || idx}
+                className="flex items-center gap-3 p-3 bg-[#FDFBF6] border border-[#1A2342]/10">
+                <Paperclip className="w-4 h-4 text-[#4A6FA5] flex-shrink-0" strokeWidth={1.5} />
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-[#1A2342] truncate" style={{ fontFamily: "'Manrope', sans-serif" }}>
+                      {doc.name}
+                    </span>
+                    <Badge color="#1A2342" bg="#D9DDE8">
+                      {t("doc_type_" + (
+                        doc.type === "drivers_license" ? "drivers" :
+                        doc.type === "bank_reference" ? "bank_ref" :
+                        doc.type === "proof_address" ? "proof_address" :
+                        doc.type === "funds_proof" ? "funds_proof" :
+                        doc.type === "good_standing" ? "good_standing" :
+                        doc.type === "kyc_form" ? "kyc_form" :
+                        doc.type
+                      )) || doc.type}
+                    </Badge>
+                  </div>
+                  <div className="text-[11px] text-[#1A2342]/50" style={{ fontFamily: "'Manrope', sans-serif" }}>
+                    {fmtDate(doc.uploadedAt)}
+                  </div>
+                </div>
+                <button onClick={async () => {
+                  try {
+                    const url = await getDocumentUrl(doc.path);
+                    window.open(url, "_blank");
+                  } catch (e) { alert(e.message); }
+                }}
+                  className="p-2 hover:bg-[#1A2342]/10 transition-colors"
+                  title={t("doc_view")}>
+                  <Eye className="w-4 h-4 text-[#1A2342]/60" strokeWidth={1.5} />
+                </button>
+              </div>
+            ))}
           </div>
         </div>
       )}
@@ -2258,9 +2636,7 @@ function PaymentInstructionModal({ client, settings, onClose }) {
           <div className="flex items-center justify-between pb-5 mb-6 border-b-2 border-[#1A2342]">
             <div>
               <div className="flex items-center gap-2 mb-1">
-                <svg width="32" height="32" viewBox="0 0 100 100" fill="none">
-                  <path d="M20 70 Q 50 30, 80 70 L 65 70 Q 50 50, 35 70 Z" fill="#1A2342" />
-                </svg>
+                <img src="/logo.svg" alt="AMBAR" style={{ width: "32px", height: "32px" }} />
                 <div>
                   <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: "22pt", fontWeight: 500, letterSpacing: "0.12em", lineHeight: 1 }}>
                     AMBAR
@@ -2622,9 +2998,7 @@ function LoginView({ language, onToggleLanguage }) {
         {/* Brand header */}
         <div className="text-center mb-10">
           <div className="flex justify-center mb-4">
-            <svg width="56" height="56" viewBox="0 0 100 100" fill="none">
-              <path d="M20 70 Q 50 30, 80 70 L 65 70 Q 50 50, 35 70 Z" fill="#1A2342" />
-            </svg>
+            <img src="/logo.svg" alt="AMBAR" className="w-14 h-14" />
           </div>
           <h1 className="text-[#1A2342]"
             style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: "2.25rem", fontWeight: 400, letterSpacing: "0.12em", lineHeight: 1 }}>
@@ -2836,6 +3210,15 @@ export default function App() {
   };
 
   const handleDelete = async (id) => {
+    const client = clients.find(c => c.id === id);
+    // Limpiar documentos en storage antes de borrar el cliente
+    if (client?.documents && client.documents.length > 0) {
+      try {
+        await Promise.all(client.documents.map(doc => deleteDocument(doc.path).catch(() => {})));
+      } catch (e) {
+        console.error("Error cleaning documents:", e);
+      }
+    }
     const ok = await deleteClientFromDB(id);
     if (!ok) {
       alert(language === "es" ? "Error al eliminar." : "Delete failed.");
@@ -2943,9 +3326,7 @@ export default function App() {
       <div className="border-b border-[#1A2342]/10 bg-[#F5F1E8] sticky top-0 z-40 no-print">
         <div className="max-w-7xl mx-auto px-8 py-4 flex items-center justify-between">
           <button onClick={() => { setView("dashboard"); setSelectedClientId(null); }} className="flex items-center gap-3">
-            <svg width="28" height="28" viewBox="0 0 100 100" fill="none" className="flex-shrink-0">
-              <path d="M20 70 Q 50 30, 80 70 L 65 70 Q 50 50, 35 70 Z" fill="#1A2342" />
-            </svg>
+            <img src="/logo.svg" alt="AMBAR" className="w-7 h-7 flex-shrink-0" />
             <div className="text-left">
               <div className="text-[#1A2342]" style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: "1.2rem", fontWeight: 500, letterSpacing: "0.12em", lineHeight: 1 }}>
                 AMBAR
