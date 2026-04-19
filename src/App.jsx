@@ -407,6 +407,36 @@ const TRANSLATIONS = {
     doc_file_too_large: "El archivo excede 50 MB",
     doc_upload_error: "Error al subir el documento",
     doc_type_required: "Selecciona el tipo de documento primero",
+    // Admin: pricing & villas
+    settings_pricing: "Precios Globales",
+    settings_pricing_sub: "Precio por área y paquete Smart Living (afecta a todos los cálculos)",
+    settings_price_sqft: "Precio por ft² (USD)",
+    settings_price_sqm: "Precio por m² (USD)",
+    settings_smart_price: "Precio Smart Living (USD)",
+    settings_villa_models: "Modelos de Villas",
+    settings_villa_models_sub: "Tipos de villas disponibles. Al cambiar ft² se recalcula m² automáticamente",
+    settings_add_model: "Añadir Modelo",
+    settings_model_id: "ID (código corto, sin espacios)",
+    settings_model_name: "Nombre del Modelo",
+    settings_model_sqft: "Área ft²",
+    settings_model_sqm: "Área m²",
+    settings_model_color: "Color",
+    settings_model_bedrooms: "Habitaciones",
+    settings_model_bathrooms: "Baños",
+    settings_model_no_models: "No hay modelos de villas. Agrega el primero.",
+    settings_lots: "Lotes / Villas",
+    settings_lots_sub: "Lista de los lotes disponibles en el proyecto con su área",
+    settings_add_lot: "Añadir Lote",
+    settings_lot_number: "Número",
+    settings_lot_sqft: "ft²",
+    settings_lot_sqm: "m²",
+    settings_lots_total: "lotes",
+    settings_confirm_delete_model: "¿Eliminar este modelo? Los clientes asignados a este modelo quedarán sin modelo.",
+    settings_confirm_delete_lot: "¿Eliminar este lote? Los clientes asignados a él perderán la asignación.",
+    settings_model_id_required: "El ID es obligatorio",
+    settings_model_id_exists: "Ya existe un modelo con ese ID",
+    settings_lot_number_required: "El número de lote es obligatorio",
+    settings_lot_exists: "Ya existe un lote con ese número",
   },
   en: {
     // Brand
@@ -733,11 +763,44 @@ const TRANSLATIONS = {
     doc_file_too_large: "File exceeds 50 MB",
     doc_upload_error: "Error uploading document",
     doc_type_required: "Select the document type first",
+    // Admin: pricing & villas
+    settings_pricing: "Global Pricing",
+    settings_pricing_sub: "Price per area and Smart Living package (affects all calculations)",
+    settings_price_sqft: "Price per ft² (USD)",
+    settings_price_sqm: "Price per m² (USD)",
+    settings_smart_price: "Smart Living Price (USD)",
+    settings_villa_models: "Villa Models",
+    settings_villa_models_sub: "Available villa types. Changing ft² auto-recalculates m²",
+    settings_add_model: "Add Model",
+    settings_model_id: "ID (short code, no spaces)",
+    settings_model_name: "Model Name",
+    settings_model_sqft: "Area ft²",
+    settings_model_sqm: "Area m²",
+    settings_model_color: "Color",
+    settings_model_bedrooms: "Bedrooms",
+    settings_model_bathrooms: "Bathrooms",
+    settings_model_no_models: "No villa models. Add the first one.",
+    settings_lots: "Lots / Villas",
+    settings_lots_sub: "List of available lots in the project with their areas",
+    settings_add_lot: "Add Lot",
+    settings_lot_number: "Number",
+    settings_lot_sqft: "ft²",
+    settings_lot_sqm: "m²",
+    settings_lots_total: "lots",
+    settings_confirm_delete_model: "Delete this model? Clients assigned to this model will have no model.",
+    settings_confirm_delete_lot: "Delete this lot? Clients assigned to it will lose their assignment.",
+    settings_model_id_required: "ID is required",
+    settings_model_id_exists: "A model with that ID already exists",
+    settings_lot_number_required: "Lot number is required",
+    settings_lot_exists: "A lot with that number already exists",
   },
 };
 
 const LanguageContext = createContext({ lang: "es", t: (k) => k, setLang: () => {} });
 const useT = () => useContext(LanguageContext);
+
+const SettingsContext = createContext(DEFAULT_SETTINGS);
+const useSettings = () => useContext(SettingsContext);
 
 // ------------------------- Utilities -------------------------
 
@@ -758,15 +821,38 @@ const fmtDate = (d) => {
 
 const todayISO = () => new Date().toISOString().slice(0, 10);
 
-// Compute villa pricing
-const computePrice = (client) => {
-  const model = VILLA_MODELS[client.villaModel];
+// Format area with language-aware units (ft² for EN, m² for ES)
+const fmtArea = (lot, lang) => {
+  if (!lot) return "—";
+  const sqft = Number(lot.sqft) || 0;
+  const sqm = Number(lot.sqm) || (sqft * 0.0929);
+  if (lang === "en") return `${sqft.toLocaleString(undefined, { maximumFractionDigits: 2 })} ft²`;
+  return `${sqm.toLocaleString(undefined, { maximumFractionDigits: 2 })} m²`;
+};
+
+// Format villa model area with language-aware units
+const fmtModelArea = (model, lang) => {
+  if (!model) return "—";
+  const sqft = Number(model.sqft) || 0;
+  const sqm = Number(model.sqm) || (sqft * 0.0929);
+  if (lang === "en") return `${sqft.toLocaleString()} ft²`;
+  return `${sqm.toLocaleString()} m²`;
+};
+
+// Compute villa pricing — takes optional settings (falls back to defaults)
+const computePrice = (client, settings) => {
+  const models = settings?.villaModels || DEFAULT_SETTINGS.villaModels;
+  const pricing = settings?.pricing || DEFAULT_SETTINGS.pricing;
+  const pricePerSqft = Number(pricing.pricePerSqft) || 271;
+  const smartPrice = Number(pricing.smartLivingPrice) || 71200;
+
+  const model = models[client.villaModel];
   let base = 0;
-  if (model) base = model.sqft * PRICE_PER_SQFT;
+  if (model) base = Number(model.sqft || 0) * pricePerSqft;
   if (client.basePriceOverride && Number(client.basePriceOverride) > 0) {
     base = Number(client.basePriceOverride);
   }
-  const smart = client.smartLivingPackage ? SMART_LIVING_PRICE : 0;
+  const smart = client.smartLivingPackage ? smartPrice : 0;
   const furniture = client.furniturePackage ? (Number(client.furniturePackagePrice) || 0) : 0;
   const discount = Number(client.discount) || 0;
   const subtotal = base + smart + furniture;
@@ -779,8 +865,8 @@ const paidAmount = (client) => {
   return payments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
 };
 
-const paidPercentage = (client) => {
-  const { total } = computePrice(client);
+const paidPercentage = (client, settings) => {
+  const { total } = computePrice(client, settings);
   if (!total) return 0;
   return Math.min(100, (paidAmount(client) / total) * 100);
 };
@@ -968,6 +1054,36 @@ const DEFAULT_SETTINGS = {
     validityDays: 15,
     remittanceEmail: "payments@ambarestate.do",
   },
+  pricing: {
+    pricePerSqft: 271,
+    pricePerSqm: 2900,
+    smartLivingPrice: 71200,
+  },
+  villaModels: {
+    amarillo: { name: "AMBAR Amarillo", sqft: 4305, sqm: 400, color: "#D4A24C", bedrooms: "4+", bathrooms: "5.5" },
+    verde:    { name: "AMBAR Verde",    sqft: 5400, sqm: 500, color: "#7A9B76", bedrooms: "4",  bathrooms: "5.5" },
+    azul:     { name: "AMBAR Azul",     sqft: 6673, sqm: 620, color: "#4A6FA5", bedrooms: "4",  bathrooms: "5.5" },
+  },
+  lots: {
+    1: { sqft: 8024.38, sqm: 745.50 },   2: { sqft: 6579.97, sqm: 611.30 },
+    3: { sqft: 6524.32, sqm: 606.12 },   4: { sqft: 6586.00, sqm: 611.86 },
+    5: { sqft: 6025.74, sqm: 559.81 },   6: { sqft: 7214.50, sqm: 670.24 },
+    7: { sqft: 5689.04, sqm: 528.53 },   8: { sqft: 9352.11, sqm: 868.87 },
+    9: { sqft: 7648.19, sqm: 710.53 },  10: { sqft: 6957.34, sqm: 646.35 },
+    11: { sqft: 8096.93, sqm: 752.23 }, 12: { sqft: 8722.44, sqm: 810.34 },
+    13: { sqft: 8058.29, sqm: 748.64 }, 14: { sqft: 5685.92, sqm: 528.24 },
+    15: { sqft: 5479.90, sqm: 509.10 }, 16: { sqft: 6257.70, sqm: 581.36 },
+    17: { sqft: 10676.71, sqm: 991.90 }, 18: { sqft: 6757.90, sqm: 627.82 },
+    19: { sqft: 9109.27, sqm: 846.31 }, 20: { sqft: 8598.53, sqm: 798.83 },
+    21: { sqft: 8218.78, sqm: 763.54 }, 22: { sqft: 8184.87, sqm: 760.39 },
+    23: { sqft: 7000.00, sqm: 650.32 }, 24: { sqft: 8604.45, sqm: 799.38 },
+    25: { sqft: 6688.47, sqm: 621.37 }, 26: { sqft: 14041.18, sqm: 1304.46 },
+    27: { sqft: 14245.05, sqm: 1323.40 }, 28: { sqft: 7644.52, sqm: 710.19 },
+    29: { sqft: 5998.83, sqm: 557.31 }, 30: { sqft: 7979.97, sqm: 741.35 },
+    31: { sqft: 6425.51, sqm: 596.96 }, 32: { sqft: 8400.58, sqm: 780.44 },
+    33: { sqft: 8865.47, sqm: 823.63 }, 34: { sqft: 16499.23, sqm: 1532.84 },
+    35: { sqft: 16366.83, sqm: 1520.54 },
+  },
 };
 
 async function storageGet(key) {
@@ -991,14 +1107,16 @@ async function storageSet(key, value) {
 
 // ------------------------- Excel Export -------------------------
 
-async function exportToExcel(clients) {
+async function exportToExcel(clients, settings) {
   const sheetjs = XLSX;
+  const villaModels = settings?.villaModels || DEFAULT_SETTINGS.villaModels;
+  const lots = settings?.lots || DEFAULT_SETTINGS.lots;
 
   const wb = sheetjs.utils.book_new();
 
   // Sheet 1: Resumen General de Clientes
   const summary = clients.map(c => {
-    const p = computePrice(c);
+    const p = computePrice(c, settings);
     const paid = paidAmount(c);
     return {
       "ID Cliente": c.id,
@@ -1009,7 +1127,7 @@ async function exportToExcel(clients) {
       "País": c.nationality || c.incorporationCountry || "",
       "Estado": STATUS_CONFIG[c.status]?.label || c.status,
       "Villa #": c.lotNumber || "",
-      "Modelo": VILLA_MODELS[c.villaModel]?.name || "",
+      "Modelo": villaModels[c.villaModel]?.name || "",
       "Precio Base": p.base,
       "Smart Living": p.smart,
       "Muebles": p.furniture,
@@ -1126,15 +1244,18 @@ async function exportToExcel(clients) {
   }
 
   // Sheet 6: Inventario de Villas
-  const villasRows = Object.entries(LOT_SIZES_FT2).map(([num, size]) => {
+  const villasRows = Object.entries(lots).map(([num, lot]) => {
     const assigned = clients.find(c => String(c.lotNumber) === String(num));
+    const size = typeof lot === "number" ? lot : lot.sqft;
+    const sqm = typeof lot === "number" ? (lot * 0.0929) : (lot.sqm || lot.sqft * 0.0929);
     return {
       "Villa #": Number(num),
       "Tamaño Terreno (ft²)": size,
+      "Tamaño Terreno (m²)": sqm,
       "Estado": assigned ? (STATUS_CONFIG[assigned.status]?.label || assigned.status) : "Disponible",
       "Cliente": assigned ? (assigned.fullName || assigned.companyName || "") : "",
-      "Modelo": assigned ? (VILLA_MODELS[assigned.villaModel]?.name || "") : "",
-      "Precio Total": assigned ? computePrice(assigned).total : "",
+      "Modelo": assigned ? (villaModels[assigned.villaModel]?.name || "") : "",
+      "Precio Total": assigned ? computePrice(assigned, settings).total : "",
       "Pagado": assigned ? paidAmount(assigned) : "",
     };
   });
@@ -1481,6 +1602,10 @@ function DocumentsSection({ clientId, documents, onDocumentsChange }) {
 
 function ClientForm({ initial, onSave, onCancel }) {
   const { t, lang } = useT();
+  const settings = useSettings();
+  const villaModels = settings.villaModels || DEFAULT_SETTINGS.villaModels;
+  const lots = settings.lots || DEFAULT_SETTINGS.lots;
+  const pricing_cfg = settings.pricing || DEFAULT_SETTINGS.pricing;
   const [tab, setTab] = useState("type");
   const [data, setData] = useState(() => initial || {
     id: uid(),
@@ -1510,7 +1635,7 @@ function ClientForm({ initial, onSave, onCancel }) {
     { v: "notes",     l: t("tab_notes"),     icon: ClipboardList },
   ];
 
-  const pricing = computePrice(data);
+  const pricing = computePrice(data, settings);
 
   // UBO helpers
   const addUbo = () => update({ ubos: [...(data.ubos || []), { name: "", nationality: "", idNumber: "", percentage: "" }] });
@@ -1657,16 +1782,22 @@ function ClientForm({ initial, onSave, onCancel }) {
           <SectionTitle subtitle={t("sec_villa_select_sub")}>{t("sec_villa_select")}</SectionTitle>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Select label={lang === "es" ? "Número de Villa / Lote" : "Villa / Lot Number"} value={data.lotNumber} onChange={v => update({ lotNumber: v })}
-              options={Object.keys(LOT_SIZES_FT2).map(n => ({ v: n, l: `Villa #${n} — ${LOT_SIZES_FT2[n].toLocaleString()} ft² ${lang === "es" ? "terreno" : "lot"}` }))} />
+              options={Object.keys(lots).map(n => {
+                const lot = lots[n];
+                const sqft = typeof lot === "number" ? lot : lot.sqft;
+                const sqm = typeof lot === "number" ? (lot * 0.0929) : (lot.sqm || sqft * 0.0929);
+                const sizeDisplay = lang === "en" ? `${sqft.toLocaleString()} ft²` : `${sqm.toLocaleString(undefined, { maximumFractionDigits: 2 })} m²`;
+                return { v: n, l: `Villa #${n} — ${sizeDisplay} ${lang === "es" ? "terreno" : "lot"}` };
+              })} />
             <Select label={lang === "es" ? "Modelo de Villa" : "Villa Model"} value={data.villaModel} onChange={v => update({ villaModel: v })}
-              options={Object.entries(VILLA_MODELS).map(([k, m]) => ({ v: k, l: `${m.name} — ${m.sqft.toLocaleString()} ft²` }))} />
+              options={Object.entries(villaModels).map(([k, m]) => ({ v: k, l: `${m.name} — ${fmtModelArea(m, lang)}` }))} />
           </div>
 
           <SectionTitle subtitle={t("sec_packages_sub")}>{t("sec_packages")}</SectionTitle>
           <div className="space-y-3 p-4 bg-[#FDFBF6] border border-[#1A2342]/10">
             <div className="flex items-start justify-between">
               <div className="flex-1">
-                <Checkbox label={`${t("lbl_smart_living")} — ${fmtUSD(SMART_LIVING_PRICE)}`} checked={data.smartLivingPackage} onChange={v => update({ smartLivingPackage: v })} />
+                <Checkbox label={`${t("lbl_smart_living")} — ${fmtUSD(pricing_cfg.smartLivingPrice)}`} checked={data.smartLivingPackage} onChange={v => update({ smartLivingPackage: v })} />
                 <p className="text-[11px] text-[#1A2342]/60 mt-1 ml-6" style={{ fontFamily: "'Manrope', sans-serif" }}>
                   {t("lbl_smart_living_desc")}
                 </p>
@@ -1874,10 +2005,13 @@ function ClientForm({ initial, onSave, onCancel }) {
 
 function ClientDetail({ client, onEdit, onClose, onDelete, onGeneratePayment }) {
   const { t, lang } = useT();
-  const pricing = computePrice(client);
+  const settings = useSettings();
+  const villaModels = settings.villaModels || DEFAULT_SETTINGS.villaModels;
+  const lots = settings.lots || DEFAULT_SETTINGS.lots;
+  const pricing = computePrice(client, settings);
   const paid = paidAmount(client);
-  const pct = paidPercentage(client);
-  const model = VILLA_MODELS[client.villaModel];
+  const pct = paidPercentage(client, settings);
+  const model = villaModels[client.villaModel];
   const name = client.type === "entity" ? client.companyName : client.fullName;
 
   const InfoRow = ({ label, value, icon: Icon }) => {
@@ -1936,7 +2070,7 @@ function ClientDetail({ client, onEdit, onClose, onDelete, onGeneratePayment }) 
             )}
             {client.lotNumber && (
               <div className="text-[11px] text-[#1A2342]/50 mt-1" style={{ fontFamily: "'Manrope', sans-serif" }}>
-                {t("villa_terrain")}: {LOT_SIZES_FT2[client.lotNumber]?.toLocaleString()} ft²
+                {t("villa_terrain")}: {fmtArea(lots[client.lotNumber], lang)}
               </div>
             )}
           </div>
@@ -2129,17 +2263,19 @@ function ClientDetail({ client, onEdit, onClose, onDelete, onGeneratePayment }) 
 
 function Dashboard({ clients, onNewClient, onExport, onGoToClients, onGoToVillas }) {
   const { t } = useT();
+  const settings = useSettings();
+  const totalLots = Object.keys(settings.lots || DEFAULT_SETTINGS.lots).length;
   const stats = useMemo(() => {
-    const totalRevenue = clients.reduce((s, c) => s + computePrice(c).total, 0);
+    const totalRevenue = clients.reduce((s, c) => s + computePrice(c, settings).total, 0);
     const totalPaid = clients.reduce((s, c) => s + paidAmount(c), 0);
     const active = clients.filter(c => ["reserved","contract","active"].includes(c.status)).length;
     const byStatus = STATUS_ORDER.reduce((acc, s) => { acc[s] = clients.filter(c => c.status === s).length; return acc; }, {});
     const soldLots = new Set(clients.filter(c => c.lotNumber && c.status !== "cancelled").map(c => String(c.lotNumber)));
-    return { totalRevenue, totalPaid, active, byStatus, soldLots: soldLots.size, availableLots: 35 - soldLots.size };
-  }, [clients]);
+    return { totalRevenue, totalPaid, active, byStatus, soldLots: soldLots.size, availableLots: totalLots - soldLots.size };
+  }, [clients, settings, totalLots]);
 
   const recentClients = useMemo(() => [...clients].sort((a, b) => (b.updatedAt || b.createdAt || "").localeCompare(a.updatedAt || a.createdAt || "")).slice(0, 5), [clients]);
-  const topPipeline = useMemo(() => clients.filter(c => !["cancelled","completed"].includes(c.status)).sort((a,b) => computePrice(b).total - computePrice(a).total).slice(0, 5), [clients]);
+  const topPipeline = useMemo(() => clients.filter(c => !["cancelled","completed"].includes(c.status)).sort((a,b) => computePrice(b, settings).total - computePrice(a, settings).total).slice(0, 5), [clients, settings]);
 
   return (
     <div className="space-y-10">
@@ -2221,8 +2357,8 @@ function Dashboard({ clients, onNewClient, onExport, onGoToClients, onGoToVillas
           ) : (
             <div className="space-y-1">
               {topPipeline.map(c => {
-                const p = computePrice(c);
-                const pct = paidPercentage(c);
+                const p = computePrice(c, settings);
+                const pct = paidPercentage(c, settings);
                 return (
                   <div key={c.id} className="p-3 border border-[#1A2342]/10">
                     <div className="flex items-center justify-between mb-2">
@@ -2254,17 +2390,21 @@ function Dashboard({ clients, onNewClient, onExport, onGoToClients, onGoToVillas
 // ------------------------- Villas Grid View -------------------------
 
 function VillasView({ clients, onClickClient }) {
-  const { t } = useT();
+  const { t, lang } = useT();
+  const settings = useSettings();
+  const lots = settings.lots || DEFAULT_SETTINGS.lots;
+  const villaModels = settings.villaModels || DEFAULT_SETTINGS.villaModels;
+  const pricing = settings.pricing || DEFAULT_SETTINGS.pricing;
   const villaStatus = useMemo(() => {
     const map = {};
-    Object.keys(LOT_SIZES_FT2).forEach(n => { map[n] = { available: true, client: null }; });
+    Object.keys(lots).forEach(n => { map[n] = { available: true, client: null }; });
     clients.forEach(c => {
       if (c.lotNumber && c.status !== "cancelled") {
         map[c.lotNumber] = { available: false, client: c };
       }
     });
     return map;
-  }, [clients]);
+  }, [clients, lots]);
 
   return (
     <div className="space-y-8">
@@ -2273,7 +2413,7 @@ function VillasView({ clients, onClickClient }) {
           {t("villa_map_title")}
         </h1>
         <p className="text-sm text-[#1A2342]/60" style={{ fontFamily: "'Manrope', sans-serif" }}>
-          {t("villa_map_sub")}
+          {Object.keys(lots).length} {lang === "es" ? "lotes" : "lots"} · 12 acres · Blue Amber Zone
         </p>
       </div>
 
@@ -2291,7 +2431,7 @@ function VillasView({ clients, onClickClient }) {
         {Object.keys(LOT_SIZES_FT2).map(n => {
           const v = villaStatus[n];
           const cfg = v.client ? STATUS_CONFIG[v.client.status] : null;
-          const model = v.client ? VILLA_MODELS[v.client.villaModel] : null;
+          const model = v.client ? villaModels[v.client.villaModel] : null;
           return (
             <button key={n}
               onClick={() => v.client && onClickClient(v.client.id)}
@@ -2310,7 +2450,7 @@ function VillasView({ clients, onClickClient }) {
                 {v.client ? "●" : "○"}
               </div>
               <div className="text-[9px] text-[#1A2342]/50" style={{ fontFamily: "'Manrope', sans-serif" }}>
-                {LOT_SIZES_FT2[n].toLocaleString()} ft²
+                {fmtArea(lots[n], lang)}
               </div>
               {v.client && (
                 <div className="text-[10px] text-[#1A2342] truncate mt-1" style={{ fontFamily: "'Manrope', sans-serif" }}>
@@ -2326,8 +2466,8 @@ function VillasView({ clients, onClickClient }) {
       <div className="pt-4 border-t border-[#1A2342]/10">
         <SectionTitle>{t("villa_models_available")}</SectionTitle>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {Object.entries(VILLA_MODELS).map(([k, m]) => {
-            const base = m.sqft * PRICE_PER_SQFT;
+          {Object.entries(villaModels).map(([k, m]) => {
+            const base = Number(m.sqft || 0) * Number(pricing.pricePerSqft || 271);
             return (
               <div key={k} className="p-4 border border-[#1A2342]/15">
                 <div className="flex items-center gap-2 mb-2">
@@ -2335,7 +2475,7 @@ function VillasView({ clients, onClickClient }) {
                   <span className="text-[#1A2342]" style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: "1.1rem" }}>{m.name}</span>
                 </div>
                 <div className="text-[11px] text-[#1A2342]/60 space-y-0.5" style={{ fontFamily: "'Manrope', sans-serif" }}>
-                  <div>{m.sqft.toLocaleString()} ft² · {m.sqm} m²</div>
+                  <div>{Number(m.sqft || 0).toLocaleString()} ft² · {Number(m.sqm || 0).toLocaleString()} m²</div>
                   <div>{m.bedrooms} {t("villa_model_bedrooms")} · {m.bathrooms} {t("villa_model_bathrooms")}</div>
                   <div className="text-[#1A2342] font-medium pt-1">{t("villa_model_from")} {fmtUSD(base)}</div>
                 </div>
@@ -2352,6 +2492,7 @@ function VillasView({ clients, onClickClient }) {
 
 function ClientsList({ clients, onSelect, onNew, onExport, onDelete }) {
   const { t } = useT();
+  const settings = useSettings();
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
   const [filterType, setFilterType] = useState("all");
@@ -2375,10 +2516,10 @@ function ClientsList({ clients, onSelect, onNew, onExport, onDelete }) {
     }
     if (sortBy === "updated") list.sort((a,b) => (b.updatedAt||b.createdAt||"").localeCompare(a.updatedAt||a.createdAt||""));
     if (sortBy === "name") list.sort((a,b) => (a.fullName||a.companyName||"").localeCompare(b.fullName||b.companyName||""));
-    if (sortBy === "price") list.sort((a,b) => computePrice(b).total - computePrice(a).total);
-    if (sortBy === "paid") list.sort((a,b) => paidPercentage(b) - paidPercentage(a));
+    if (sortBy === "price") list.sort((a,b) => computePrice(b, settings).total - computePrice(a, settings).total);
+    if (sortBy === "paid") list.sort((a,b) => paidPercentage(b, settings) - paidPercentage(a, settings));
     return list;
-  }, [clients, filterStatus, filterType, search, sortBy]);
+  }, [clients, filterStatus, filterType, search, sortBy, settings]);
 
   return (
     <div className="space-y-6">
@@ -2440,8 +2581,8 @@ function ClientsList({ clients, onSelect, onNew, onExport, onDelete }) {
             <div className="col-span-1 text-right">{t("col_action")}</div>
           </div>
           {filtered.map(c => {
-            const p = computePrice(c);
-            const pct = paidPercentage(c);
+            const p = computePrice(c, settings);
+            const pct = paidPercentage(c, settings);
             const cfg = STATUS_CONFIG[c.status];
             return (
               <div key={c.id} onClick={() => onSelect(c.id)}
@@ -2564,6 +2705,35 @@ function SettingsView({ settings, onSave }) {
         </div>
       </div>
 
+      {/* Pricing Globals */}
+      <div>
+        <SectionTitle subtitle={t("settings_pricing_sub")}>{t("settings_pricing")}</SectionTitle>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <Input label={t("settings_price_sqft")} type="number" value={draft.pricing?.pricePerSqft || ""}
+            onChange={v => {
+              const sqft = Number(v) || 0;
+              const sqm = Math.round(sqft / 0.0929);
+              setDraft(d => ({ ...d, pricing: { ...d.pricing, pricePerSqft: sqft, pricePerSqm: sqm } }));
+              setSaved(false);
+            }} />
+          <Input label={t("settings_price_sqm")} type="number" value={draft.pricing?.pricePerSqm || ""}
+            onChange={v => {
+              const sqm = Number(v) || 0;
+              const sqft = Math.round(sqm * 0.0929 * 100) / 100;
+              setDraft(d => ({ ...d, pricing: { ...d.pricing, pricePerSqm: sqm, pricePerSqft: sqft } }));
+              setSaved(false);
+            }} />
+          <Input label={t("settings_smart_price")} type="number" value={draft.pricing?.smartLivingPrice || ""}
+            onChange={v => update("pricing","smartLivingPrice", Number(v) || 0)} />
+        </div>
+      </div>
+
+      {/* Villa Models */}
+      <VillaModelsEditor draft={draft} setDraft={setDraft} setSaved={setSaved} />
+
+      {/* Lots */}
+      <LotsEditor draft={draft} setDraft={setDraft} setSaved={setSaved} />
+
       <div className="flex items-center justify-end gap-3 pt-4 border-t border-[#1A2342]/10">
         {saved && (
           <span className="text-xs text-[#2D5E3E] flex items-center gap-1" style={{ fontFamily: "'Manrope', sans-serif" }}>
@@ -2572,6 +2742,215 @@ function SettingsView({ settings, onSave }) {
         )}
         <Button onClick={save} variant="primary" icon={Check}>{t("settings_save")}</Button>
       </div>
+    </div>
+  );
+}
+
+// ------------------------- Villa Models Editor -------------------------
+
+function VillaModelsEditor({ draft, setDraft, setSaved }) {
+  const { t } = useT();
+  const models = draft.villaModels || {};
+  const [addingId, setAddingId] = useState("");
+  const [error, setError] = useState("");
+
+  const updateModel = (id, field, value) => {
+    const m = { ...models[id], [field]: value };
+    if (field === "sqft") {
+      const sqft = Number(value) || 0;
+      m.sqm = Math.round(sqft * 0.0929);
+    } else if (field === "sqm") {
+      const sqm = Number(value) || 0;
+      m.sqft = Math.round(sqm / 0.0929 * 100) / 100;
+    }
+    setDraft(d => ({ ...d, villaModels: { ...d.villaModels, [id]: m } }));
+    setSaved(false);
+  };
+
+  const addModel = () => {
+    const id = addingId.trim().toLowerCase().replace(/[^a-z0-9_]/g, "");
+    if (!id) { setError(t("settings_model_id_required")); return; }
+    if (models[id]) { setError(t("settings_model_id_exists")); return; }
+    setError("");
+    setDraft(d => ({
+      ...d,
+      villaModels: {
+        ...d.villaModels,
+        [id]: { name: "", sqft: 0, sqm: 0, color: "#4A6FA5", bedrooms: "", bathrooms: "" }
+      }
+    }));
+    setAddingId("");
+    setSaved(false);
+  };
+
+  const deleteModel = (id) => {
+    if (!confirm(t("settings_confirm_delete_model"))) return;
+    setDraft(d => {
+      const next = { ...d.villaModels };
+      delete next[id];
+      return { ...d, villaModels: next };
+    });
+    setSaved(false);
+  };
+
+  const modelEntries = Object.entries(models);
+
+  return (
+    <div>
+      <SectionTitle subtitle={t("settings_villa_models_sub")}>{t("settings_villa_models")}</SectionTitle>
+
+      {modelEntries.length === 0 ? (
+        <div className="p-6 text-center text-sm text-[#1A2342]/50 bg-[#FDFBF6] border border-dashed border-[#1A2342]/20" style={{ fontFamily: "'Manrope', sans-serif" }}>
+          {t("settings_model_no_models")}
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {modelEntries.map(([id, m]) => (
+            <div key={id} className="p-3 bg-[#FDFBF6] border border-[#1A2342]/10">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-4 h-4 rounded" style={{ backgroundColor: m.color || "#4A6FA5" }} />
+                <span className="text-[10px] uppercase tracking-[0.12em] text-[#1A2342]/60 font-semibold" style={{ fontFamily: "'Manrope', sans-serif" }}>{id}</span>
+                <button onClick={() => deleteModel(id)} className="ml-auto p-1 text-[#1A2342]/40 hover:text-[#B04B3F] hover:bg-[#B04B3F]/10 transition-colors">
+                  <Trash2 className="w-3.5 h-3.5" strokeWidth={1.5} />
+                </button>
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-6 gap-2">
+                <Input label={t("settings_model_name")} value={m.name} onChange={v => updateModel(id, "name", v)} className="col-span-2" />
+                <Input label={t("settings_model_sqft")} type="number" value={m.sqft} onChange={v => updateModel(id, "sqft", v)} />
+                <Input label={t("settings_model_sqm")} type="number" value={m.sqm} onChange={v => updateModel(id, "sqm", v)} />
+                <Input label={t("settings_model_bedrooms")} value={m.bedrooms} onChange={v => updateModel(id, "bedrooms", v)} />
+                <Input label={t("settings_model_bathrooms")} value={m.bathrooms} onChange={v => updateModel(id, "bathrooms", v)} />
+                <div className="col-span-2 md:col-span-1">
+                  <label className="block text-[10px] uppercase tracking-[0.12em] text-[#1A2342]/60 mb-1" style={{ fontFamily: "'Manrope', sans-serif" }}>
+                    {t("settings_model_color")}
+                  </label>
+                  <input type="color" value={m.color || "#4A6FA5"} onChange={e => updateModel(id, "color", e.target.value)}
+                    className="w-full h-[34px] border border-[#1A2342]/15 bg-transparent cursor-pointer" />
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Add new model */}
+      <div className="mt-3 flex items-end gap-2">
+        <div className="flex-1 max-w-xs">
+          <Input label={t("settings_model_id")} value={addingId} onChange={v => { setAddingId(v); setError(""); }}
+            placeholder="ej: amarillo, verde, azul" />
+        </div>
+        <Button onClick={addModel} variant="outline" icon={Plus}>{t("settings_add_model")}</Button>
+      </div>
+      {error && (
+        <div className="mt-2 text-xs text-[#B04B3F]" style={{ fontFamily: "'Manrope', sans-serif" }}>{error}</div>
+      )}
+    </div>
+  );
+}
+
+// ------------------------- Lots Editor -------------------------
+
+function LotsEditor({ draft, setDraft, setSaved }) {
+  const { t } = useT();
+  const lots = draft.lots || {};
+  const [addingNum, setAddingNum] = useState("");
+  const [error, setError] = useState("");
+
+  const updateLot = (num, field, value) => {
+    const existing = lots[num];
+    const lot = typeof existing === "number" ? { sqft: existing, sqm: existing * 0.0929 } : { ...existing };
+    lot[field] = Number(value) || 0;
+    if (field === "sqft") {
+      lot.sqm = Math.round(lot.sqft * 0.0929 * 100) / 100;
+    } else if (field === "sqm") {
+      lot.sqft = Math.round(lot.sqm / 0.0929 * 100) / 100;
+    }
+    setDraft(d => ({ ...d, lots: { ...d.lots, [num]: lot } }));
+    setSaved(false);
+  };
+
+  const addLot = () => {
+    const num = String(addingNum).trim();
+    if (!num) { setError(t("settings_lot_number_required")); return; }
+    if (lots[num]) { setError(t("settings_lot_exists")); return; }
+    setError("");
+    setDraft(d => ({
+      ...d,
+      lots: { ...d.lots, [num]: { sqft: 0, sqm: 0 } }
+    }));
+    setAddingNum("");
+    setSaved(false);
+  };
+
+  const deleteLot = (num) => {
+    if (!confirm(t("settings_confirm_delete_lot"))) return;
+    setDraft(d => {
+      const next = { ...d.lots };
+      delete next[num];
+      return { ...d, lots: next };
+    });
+    setSaved(false);
+  };
+
+  // Sort by lot number numerically
+  const lotEntries = Object.entries(lots).sort(([a], [b]) => Number(a) - Number(b));
+
+  return (
+    <div>
+      <SectionTitle subtitle={t("settings_lots_sub")}>
+        {t("settings_lots")} <span className="text-[11px] text-[#1A2342]/50 font-normal">({lotEntries.length} {t("settings_lots_total")})</span>
+      </SectionTitle>
+
+      <div className="border border-[#1A2342]/10 overflow-x-auto">
+        <div className="min-w-[500px]">
+          <div className="grid grid-cols-12 gap-2 px-3 py-2 bg-[#1A2342]/5 text-[10px] uppercase tracking-[0.12em] text-[#1A2342]/60" style={{ fontFamily: "'Manrope', sans-serif" }}>
+            <div className="col-span-2">{t("settings_lot_number")}</div>
+            <div className="col-span-4">{t("settings_lot_sqft")}</div>
+            <div className="col-span-4">{t("settings_lot_sqm")}</div>
+            <div className="col-span-2 text-right"></div>
+          </div>
+          {lotEntries.length === 0 ? (
+            <div className="p-4 text-center text-sm text-[#1A2342]/50" style={{ fontFamily: "'Manrope', sans-serif" }}>
+              —
+            </div>
+          ) : (
+            lotEntries.map(([num, lot]) => {
+              const sqft = typeof lot === "number" ? lot : lot.sqft;
+              const sqm = typeof lot === "number" ? (lot * 0.0929) : (lot.sqm || sqft * 0.0929);
+              return (
+                <div key={num} className="grid grid-cols-12 gap-2 px-3 py-2 border-t border-[#1A2342]/10 items-center" style={{ fontFamily: "'Manrope', sans-serif" }}>
+                  <div className="col-span-2 text-sm text-[#1A2342] font-medium">#{num}</div>
+                  <div className="col-span-4">
+                    <input type="number" step="0.01" value={sqft} onChange={e => updateLot(num, "sqft", e.target.value)}
+                      className="w-full px-2 py-1 bg-transparent border border-[#1A2342]/15 focus:border-[#4A6FA5] focus:outline-none text-sm" />
+                  </div>
+                  <div className="col-span-4">
+                    <input type="number" step="0.01" value={sqm} onChange={e => updateLot(num, "sqm", e.target.value)}
+                      className="w-full px-2 py-1 bg-transparent border border-[#1A2342]/15 focus:border-[#4A6FA5] focus:outline-none text-sm" />
+                  </div>
+                  <div className="col-span-2 text-right">
+                    <button onClick={() => deleteLot(num)} className="p-1.5 text-[#1A2342]/40 hover:text-[#B04B3F] hover:bg-[#B04B3F]/10 transition-colors">
+                      <Trash2 className="w-3.5 h-3.5" strokeWidth={1.5} />
+                    </button>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+      </div>
+
+      {/* Add new lot */}
+      <div className="mt-3 flex items-end gap-2">
+        <div className="flex-1 max-w-xs">
+          <Input label={t("settings_lot_number")} type="number" value={addingNum} onChange={v => { setAddingNum(v); setError(""); }}
+            placeholder="36" />
+        </div>
+        <Button onClick={addLot} variant="outline" icon={Plus}>{t("settings_add_lot")}</Button>
+      </div>
+      {error && (
+        <div className="mt-2 text-xs text-[#B04B3F]" style={{ fontFamily: "'Manrope', sans-serif" }}>{error}</div>
+      )}
     </div>
   );
 }
@@ -2587,7 +2966,7 @@ function PaymentInstructionModal({ client, settings, onClose }) {
   const [notes, setNotes] = useState("");
   const [mode, setMode] = useState("form"); // 'form' | 'preview'
 
-  const pricing = computePrice(client);
+  const pricing = computePrice(client, settings);
   const pending = pricing.total - paidAmount(client);
 
   const CONCEPT_OPTIONS = [
@@ -2709,7 +3088,7 @@ function PaymentInstructionModal({ client, settings, onClose }) {
               <table style={{ width: "100%", fontSize: "9pt", lineHeight: 1.6 }}>
                 <tbody>
                   <tr><td style={{ opacity: 0.6, paddingRight: "12pt", verticalAlign: "top", width: "45%" }}>Cliente</td><td style={{ fontWeight: 500 }}>{clientName || "—"}</td></tr>
-                  {client.lotNumber && <tr><td style={{ opacity: 0.6 }}>Villa / Lote</td><td style={{ fontWeight: 500 }}>No. {client.lotNumber} {VILLA_MODELS[client.villaModel] ? `— ${VILLA_MODELS[client.villaModel].name}` : ""}</td></tr>}
+                  {client.lotNumber && <tr><td style={{ opacity: 0.6 }}>Villa / Lote</td><td style={{ fontWeight: 500 }}>No. {client.lotNumber} {(settings.villaModels || DEFAULT_SETTINGS.villaModels)[client.villaModel] ? `— ${(settings.villaModels || DEFAULT_SETTINGS.villaModels)[client.villaModel].name}` : ""}</td></tr>}
                   <tr><td style={{ opacity: 0.6 }}>Concepto</td><td style={{ fontWeight: 500 }}>{finalConcept.split(" / ")[0]}</td></tr>
                   {paymentNumber && <tr><td style={{ opacity: 0.6 }}>Número de Pago</td><td style={{ fontWeight: 500 }}>{paymentNumber}</td></tr>}
                   <tr><td style={{ opacity: 0.6 }}>Precio Total Villa</td><td>{fmtUSD(pricing.total)}</td></tr>
@@ -2725,7 +3104,7 @@ function PaymentInstructionModal({ client, settings, onClose }) {
               <table style={{ width: "100%", fontSize: "9pt", lineHeight: 1.6 }}>
                 <tbody>
                   <tr><td style={{ opacity: 0.6, paddingRight: "12pt", verticalAlign: "top", width: "45%" }}>Client</td><td style={{ fontWeight: 500 }}>{clientName || "—"}</td></tr>
-                  {client.lotNumber && <tr><td style={{ opacity: 0.6 }}>Villa / Lot</td><td style={{ fontWeight: 500 }}>No. {client.lotNumber} {VILLA_MODELS[client.villaModel] ? `— ${VILLA_MODELS[client.villaModel].name}` : ""}</td></tr>}
+                  {client.lotNumber && <tr><td style={{ opacity: 0.6 }}>Villa / Lot</td><td style={{ fontWeight: 500 }}>No. {client.lotNumber} {(settings.villaModels || DEFAULT_SETTINGS.villaModels)[client.villaModel] ? `— ${(settings.villaModels || DEFAULT_SETTINGS.villaModels)[client.villaModel].name}` : ""}</td></tr>}
                   <tr><td style={{ opacity: 0.6 }}>Concept</td><td style={{ fontWeight: 500 }}>{finalConcept.split(" / ")[1] || finalConcept}</td></tr>
                   {paymentNumber && <tr><td style={{ opacity: 0.6 }}>Payment Number</td><td style={{ fontWeight: 500 }}>{paymentNumber}</td></tr>}
                   <tr><td style={{ opacity: 0.6 }}>Total Villa Price</td><td>{fmtUSD(pricing.total)}</td></tr>
@@ -3242,7 +3621,7 @@ export default function App() {
     }
     setExporting(true);
     try {
-      await exportToExcel(clients);
+      await exportToExcel(clients, settings);
       showToast(t("toast_excel"));
     } catch (e) {
       console.error(e);
@@ -3294,6 +3673,7 @@ export default function App() {
 
   return (
     <LanguageContext.Provider value={{ lang: language, t, setLang: setLanguage }}>
+    <SettingsContext.Provider value={settings}>
     <div className="min-h-screen bg-[#F5F1E8]" style={{ fontFamily: "'Manrope', sans-serif" }}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500;600&family=Manrope:wght@300;400;500;600;700&display=swap');
@@ -3481,6 +3861,7 @@ export default function App() {
         </div>
       )}
     </div>
+    </SettingsContext.Provider>
     </LanguageContext.Provider>
   );
 }
