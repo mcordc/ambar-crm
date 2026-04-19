@@ -2620,9 +2620,7 @@ export default function App() {
       <div className="border-b border-[#1A2342]/10 bg-[#F5F1E8] sticky top-0 z-40 no-print">
         <div className="max-w-7xl mx-auto px-8 py-4 flex items-center justify-between">
           <button onClick={() => { setView("dashboard"); setSelectedClientId(null); }} className="flex items-center gap-3">
-            <svg width="28" height="28" viewBox="0 0 100 100" fill="none" className="flex-shrink-0">
-              <path d="M20 70 Q 50 30, 80 70 L 65 70 Q 50 50, 35 70 Z" fill="#1A2342" />
-            </svg>
+            <img src="/logo.svg" alt="AMBAR" className="w-7 h-7 flex-shrink-0" />
             <div className="text-left">
               <div className="text-[#1A2342]" style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: "1.2rem", fontWeight: 500, letterSpacing: "0.12em", lineHeight: 1 }}>
                 AMBAR
