@@ -600,6 +600,20 @@ const TRANSLATIONS = {
     lbl_contract_notes: "Notas Contractuales Especiales",
     lbl_contract_notes_ph: "Cláusulas específicas, condiciones particulares, etc. Visible solo internamente.",
     lbl_contract_date: "Fecha de Firma del Contrato",
+    // Stage Transition Modal
+    stm_title_interested: "Marcar Cliente como Interesado",
+    stm_sub_interested: "Completa la información de la villa que el cliente ha elegido",
+    stm_title_contracted: "Marcar Cliente como Contratado",
+    stm_sub_contracted: "Define los términos del contrato y plantilla inicial de pagos",
+    stm_title_active: "Marcar Cliente como Activo",
+    stm_sub_active: "Confirma que el cliente está en proceso de pagos activos. Requiere al menos un pago registrado.",
+    stm_discussed_price: "Precio Discutido (opcional)",
+    stm_discussed_price_help: "Precio acordado con el cliente. Se calcula automáticamente según modelo, pero puedes sobrescribirlo.",
+    stm_apply_template_optional: "Aplicar plantilla de pagos (opcional)",
+    stm_template_none: "— Definir plan después —",
+    stm_template_help: "Puedes aplicar una plantilla ahora o dejarlo en blanco y configurar el plan detallado después.",
+    stm_requirements_missing: "Aún faltan estos requisitos. Complétalos en la vista avanzada primero:",
+    stm_confirm: "Confirmar y Avanzar",
   },
   en: {
     // Brand
@@ -1119,6 +1133,20 @@ const TRANSLATIONS = {
     lbl_contract_notes: "Special Contract Notes",
     lbl_contract_notes_ph: "Specific clauses, particular conditions, etc. Internal view only.",
     lbl_contract_date: "Contract Signing Date",
+    // Stage Transition Modal
+    stm_title_interested: "Mark Client as Interested",
+    stm_sub_interested: "Complete the villa information the client has chosen",
+    stm_title_contracted: "Mark Client as Contracted",
+    stm_sub_contracted: "Define contract terms and initial payment plan template",
+    stm_title_active: "Mark Client as Active",
+    stm_sub_active: "Confirm the client is in active payment process. Requires at least one registered payment.",
+    stm_discussed_price: "Discussed Price (optional)",
+    stm_discussed_price_help: "Price agreed with client. Auto-calculated from model, but you can override.",
+    stm_apply_template_optional: "Apply payment template (optional)",
+    stm_template_none: "— Define plan later —",
+    stm_template_help: "You can apply a template now or leave blank and configure the detailed plan later.",
+    stm_requirements_missing: "These requirements are still missing. Complete them in the advanced view first:",
+    stm_confirm: "Confirm and Advance",
   },
 };
 
@@ -1514,10 +1542,10 @@ async function saveClientToDB(client) {
         ...(client.createdAt ? {} : { created_by: userId })
       }, { onConflict: "id" });
     if (error) throw error;
-    return true;
+    return client; // Return the client object so callers have the full record
   } catch (e) {
     console.error("Save client error:", e);
-    return false;
+    return null;
   }
 }
 
@@ -2015,8 +2043,9 @@ const Modal = ({ open, onClose, children, title, size = "lg" }) => {
 
 const StatusBadge = ({ status }) => {
   const { t } = useT();
-  const cfg = STATUS_CONFIG[status] || STATUS_CONFIG.lead;
-  return <Badge color={cfg.color} bg={cfg.bg}>{t("status_" + status)}</Badge>;
+  const safeStatus = status && STATUS_CONFIG[status] ? status : "lead";
+  const cfg = STATUS_CONFIG[safeStatus];
+  return <Badge color={cfg.color} bg={cfg.bg}>{t("status_" + safeStatus)}</Badge>;
 };
 
 const ProgressBar = ({ percent, color = "#4A6FA5" }) => (
@@ -3250,6 +3279,186 @@ function QuickCreateModal({ open, onClose, onCreate }) {
   );
 }
 
+// Stage Transition Modal — opens when user clicks "Advance to [stage]"
+// Asks only for the data relevant to that specific transition
+function StageTransitionModal({ open, client, targetStage, settings, onConfirm, onClose }) {
+  const { t, lang } = useT();
+  const villaModels = settings?.villaModels || DEFAULT_SETTINGS.villaModels;
+  const lots = settings?.lots || DEFAULT_SETTINGS.lots;
+
+  // Local form state for each stage's extra fields
+  const [lotNumber, setLotNumber] = useState("");
+  const [villaModel, setVillaModel] = useState("");
+  const [discussedPrice, setDiscussedPrice] = useState("");
+  const [contractDate, setContractDate] = useState(todayISO());
+  const [contractCurrency, setContractCurrency] = useState("USD");
+  const [graceDays, setGraceDays] = useState("");
+  const [templateId, setTemplateId] = useState("");
+  const [startDate, setStartDate] = useState(todayISO());
+
+  // Reset / pre-fill when modal opens
+  useEffect(() => {
+    if (!open) return;
+    setLotNumber(client?.lotNumber || "");
+    setVillaModel(client?.villaModel || "");
+    setDiscussedPrice(client?.basePriceOverride || "");
+    setContractDate(client?.contractDate || todayISO());
+    setContractCurrency(client?.contractCurrency || "USD");
+    setGraceDays(client?.graceDays ?? "");
+    setTemplateId("");
+    setStartDate(todayISO());
+  }, [open, client]);
+
+  if (!open || !client) return null;
+
+  const isES = lang === "es";
+  const targetCfg = STAGE_CONFIG[targetStage];
+
+  const handleConfirm = () => {
+    let patch = {};
+
+    if (targetStage === "interested") {
+      patch.lotNumber = lotNumber;
+      patch.villaModel = villaModel;
+      if (discussedPrice) patch.basePriceOverride = Number(discussedPrice);
+    }
+
+    if (targetStage === "contracted") {
+      patch.contractDate = contractDate;
+      patch.contractCurrency = contractCurrency;
+      if (graceDays !== "") patch.graceDays = Number(graceDays);
+      // Apply template if selected and no plan exists yet
+      if (templateId && (!client.paymentPlan?.installments || client.paymentPlan.installments.length === 0)) {
+        const price = computePrice({ ...client, ...patch }, settings);
+        const installments = applyPaymentTemplate(templateId, price.total, startDate);
+        patch.paymentPlan = {
+          includeInPdf: true,
+          installments,
+        };
+      }
+    }
+
+    // Delegate to parent which handles stage advance + save
+    onConfirm(patch);
+  };
+
+  // Title and subtitle per stage
+  const title = targetStage === "interested" ? t("stm_title_interested")
+              : targetStage === "contracted" ? t("stm_title_contracted")
+              : t("stm_title_active");
+  const sub = targetStage === "interested" ? t("stm_sub_interested")
+            : targetStage === "contracted" ? t("stm_sub_contracted")
+            : t("stm_sub_active");
+
+  // For "active" stage — no extra data needed, just confirm
+  const isActiveTransition = targetStage === "active";
+
+  return (
+    <div className="fixed inset-0 bg-[#1A2342]/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <div className="bg-[#F5F1E8] border border-[#1A2342]/15 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+        <div className="px-6 py-4 border-b border-[#1A2342]/10 flex items-center justify-between">
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: targetCfg.color }} />
+              <span className="text-[10px] uppercase tracking-[0.15em] text-[#1A2342]/60" style={{ fontFamily: "'Manrope', sans-serif" }}>
+                {isES ? targetCfg.label : targetCfg.labelEn}
+              </span>
+            </div>
+            <h2 className="text-[#1A2342]" style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: "1.5rem", fontWeight: 500 }}>
+              {title}
+            </h2>
+            <p className="text-[11px] text-[#1A2342]/60 mt-0.5" style={{ fontFamily: "'Manrope', sans-serif" }}>
+              {sub}
+            </p>
+          </div>
+          <button onClick={onClose} className="p-1.5 hover:bg-[#1A2342]/10 transition-colors">
+            <X className="w-4 h-4 text-[#1A2342]/60" strokeWidth={1.5} />
+          </button>
+        </div>
+
+        <div className="p-6 space-y-4">
+          {targetStage === "interested" && (
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Select label={isES ? "Número de Villa / Lote" : "Villa / Lot Number"}
+                  value={lotNumber} onChange={setLotNumber}
+                  options={Object.keys(lots).map(n => {
+                    const lot = lots[n];
+                    const sqft = typeof lot === "number" ? lot : lot.sqft;
+                    const sqm = typeof lot === "number" ? (lot * 0.0929) : (lot.sqm || sqft * 0.0929);
+                    const sizeDisplay = lang === "en" ? `${sqft.toLocaleString()} ft²` : `${sqm.toLocaleString(undefined, { maximumFractionDigits: 2 })} m²`;
+                    return { v: n, l: `Villa #${n} — ${sizeDisplay}` };
+                  })} required />
+                <Select label={isES ? "Modelo de Villa" : "Villa Model"}
+                  value={villaModel} onChange={setVillaModel}
+                  options={Object.entries(villaModels).map(([k, m]) => ({ v: k, l: `${m.name} — ${fmtModelArea(m, lang)}` }))} required />
+              </div>
+              <div>
+                <Input label={t("stm_discussed_price")} type="number" value={discussedPrice} onChange={setDiscussedPrice}
+                  placeholder={villaModel && villaModels[villaModel] ? String(Math.round(villaModels[villaModel].sqft * (settings?.pricing?.pricePerSqft || 271))) : ""} />
+                <div className="text-[11px] text-[#1A2342]/50 mt-1" style={{ fontFamily: "'Manrope', sans-serif" }}>
+                  {t("stm_discussed_price_help")}
+                </div>
+              </div>
+            </>
+          )}
+
+          {targetStage === "contracted" && (
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Input label={t("lbl_contract_date")} type="date" value={contractDate} onChange={setContractDate} required />
+                <Select label={t("lbl_currency")} value={contractCurrency} onChange={setContractCurrency}
+                  options={[
+                    { v: "USD", l: "USD — US Dollar" },
+                    { v: "DOP", l: "DOP — Peso Dominicano" },
+                    { v: "EUR", l: "EUR — Euro" },
+                  ]} required />
+                <div>
+                  <Input label={t("lbl_grace_days")} type="number" value={graceDays} onChange={setGraceDays} placeholder="5" />
+                  <div className="text-[11px] text-[#1A2342]/50 mt-1" style={{ fontFamily: "'Manrope', sans-serif" }}>
+                    {t("lbl_grace_days_help")}
+                  </div>
+                </div>
+              </div>
+
+              <div className="pt-4 border-t border-[#1A2342]/10">
+                <Select label={t("stm_apply_template_optional")} value={templateId} onChange={setTemplateId}
+                  options={[
+                    { v: "", l: t("stm_template_none") },
+                    ...PAYMENT_TEMPLATES.filter(tpl => tpl.id !== "custom").map(tpl => ({
+                      v: tpl.id,
+                      l: `${isES ? tpl.labelEs : tpl.labelEn} — ${isES ? tpl.descEs : tpl.descEn}`
+                    }))
+                  ]} />
+                <div className="text-[11px] text-[#1A2342]/50 mt-1" style={{ fontFamily: "'Manrope', sans-serif" }}>
+                  {t("stm_template_help")}
+                </div>
+                {templateId && (
+                  <div className="mt-3">
+                    <Input label={t("plan_start_date")} type="date" value={startDate} onChange={setStartDate} />
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+
+          {isActiveTransition && (
+            <div className="p-4 bg-[#FDFBF6] border border-[#1A2342]/10 text-sm text-[#1A2342]/70"
+              style={{ fontFamily: "'Manrope', sans-serif" }}>
+              {t("stm_sub_active")}
+            </div>
+          )}
+        </div>
+
+        <div className="px-6 py-4 border-t border-[#1A2342]/10 flex justify-end gap-2">
+          <Button onClick={onClose} variant="ghost">{t("cancel")}</Button>
+          <Button onClick={handleConfirm} variant="gold" icon={Check}>{t("stm_confirm")}</Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function ClientDetail({ client, onEdit, onEditTab, onAdvanceStage, onClose, onDelete, onGeneratePayment }) {
   const { t, lang } = useT();
   const settings = useSettings();
@@ -3317,7 +3526,7 @@ function ClientDetail({ client, onEdit, onEditTab, onAdvanceStage, onClose, onDe
                   {lang === "es" ? STAGE_CONFIG[currentStage].label : STAGE_CONFIG[currentStage].labelEn}
                 </div>
               </div>
-              {nextStage && canAdvance && (
+              {nextStage && (
                 <Button onClick={onAdvanceStage} variant="gold" icon={Check}>
                   {t("stage_advance_to")} {lang === "es" ? STAGE_CONFIG[nextStage].label : STAGE_CONFIG[nextStage].labelEn}
                 </Button>
@@ -5523,6 +5732,7 @@ export default function App() {
 
   const [quickCreateOpen, setQuickCreateOpen] = useState(false);
   const [formInitialTab, setFormInitialTab] = useState(null);
+  const [transitionFor, setTransitionFor] = useState(null); // { client, targetStage }
 
   const openNew = () => { setQuickCreateOpen(true); };
   const openEdit = (client) => { setFormInitial(client); setFormInitialTab(null); setFormOpen(true); };
@@ -5540,33 +5750,42 @@ export default function App() {
     showToast(language === "es" ? "Prospecto creado" : "Prospect created");
   };
 
-  const handleAdvanceStage = async (client) => {
+  // Initiate transition: open modal with the contextual form for the next stage
+  const handleAdvanceStage = (client) => {
     const current = getClientStage(client);
     const next = getNextStage(current);
     if (!next) return;
-    if (!canAdvanceToStage(client, next)) {
-      alert(language === "es"
-        ? "Faltan requisitos para avanzar. Completa los campos marcados."
-        : "Requirements missing to advance. Complete the marked fields.");
-      return;
-    }
-    const msg = t("stage_confirm_advance") + "\n\n" +
-      (language === "es" ? STAGE_CONFIG[current].label : STAGE_CONFIG[current].labelEn) +
-      " → " +
-      (language === "es" ? STAGE_CONFIG[next].label : STAGE_CONFIG[next].labelEn);
-    if (!confirm(msg)) return;
+    setTransitionFor({ client, targetStage: next });
+  };
+
+  // Confirm transition: apply patch, save, close modal
+  const handleConfirmTransition = async (patch) => {
+    if (!transitionFor) return;
+    const { client, targetStage } = transitionFor;
     const updated = {
       ...client,
-      stage: next,
-      status: stageToStatus(next),
+      ...patch,
+      stage: targetStage,
+      status: stageToStatus(targetStage),
       updatedAt: new Date().toISOString(),
     };
+    // Re-check requirements with the patched data
+    if (!canAdvanceToStage(updated, targetStage)) {
+      // Find what's still missing
+      const reqs = getStageRequirements(updated, targetStage);
+      const missing = reqs.filter(r => !r.done).map(r => language === "es" ? r.label : r.labelEn);
+      alert((language === "es"
+        ? "Faltan completar estos requisitos:\n\n"
+        : "Missing requirements:\n\n") + missing.map(m => "• " + m).join("\n"));
+      return;
+    }
     const saved = await saveClientToDB(updated);
     if (!saved) {
       alert(language === "es" ? "Error al guardar." : "Error saving.");
       return;
     }
     setClients(clients.map(c => c.id === saved.id ? saved : c));
+    setTransitionFor(null);
     showToast(t("stage_advanced"));
   };
 
@@ -5766,6 +5985,16 @@ export default function App() {
         open={quickCreateOpen}
         onClose={() => setQuickCreateOpen(false)}
         onCreate={handleQuickCreate}
+      />
+
+      {/* Stage Transition Modal */}
+      <StageTransitionModal
+        open={!!transitionFor}
+        client={transitionFor?.client}
+        targetStage={transitionFor?.targetStage}
+        settings={settings}
+        onConfirm={handleConfirmTransition}
+        onClose={() => setTransitionFor(null)}
       />
 
       {/* Payment Instruction Modal */}
