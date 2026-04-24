@@ -556,6 +556,50 @@ const TRANSLATIONS = {
     pi_wa_footer_tail_es: "después de transferir.",
     pi_wa_footer_tail_en: "after transferring.",
     pi_send_help: "Se descargará el PDF y se abrirá la aplicación correspondiente con el mensaje prellenado. Solo adjunta el PDF y envía.",
+    // Stage system
+    stage_prospect: "Prospecto",
+    stage_interested: "Interesado",
+    stage_contracted: "Contratado",
+    stage_active: "Activo",
+    stage_progress: "Progreso del Cliente",
+    stage_current: "Fase Actual",
+    stage_next: "Próxima Fase",
+    stage_requirements: "Requisitos para avanzar",
+    stage_all_complete: "¡Listo para avanzar!",
+    stage_missing: "Falta completar",
+    stage_advance_to: "Marcar como",
+    stage_go_to_tab: "Ir a esta sección",
+    stage_confirm_advance: "¿Confirmar avance a la siguiente fase?",
+    stage_advanced: "Cliente avanzado a la siguiente fase",
+    // Quick create wizard
+    qc_title: "Nuevo Prospecto",
+    qc_sub: "Información básica para empezar. Podrás completar los demás datos cuando el cliente avance de fase.",
+    qc_type: "Tipo de cliente",
+    qc_type_individual: "Persona Física",
+    qc_type_entity: "Empresa",
+    qc_name: "Nombre completo",
+    qc_company: "Razón social",
+    qc_email: "Email",
+    qc_phone: "Teléfono",
+    qc_source: "¿Cómo nos conoció? (opcional)",
+    qc_source_ph: "Referido, redes sociales, broker, etc.",
+    qc_create: "Crear Prospecto",
+    qc_need_name: "El nombre es obligatorio",
+    qc_need_contact: "Al menos un email o teléfono es requerido",
+    // Edit full
+    edit_full: "Editar Completo (Vista Avanzada)",
+    edit_full_help: "Abre el formulario completo con todas las pestañas para editar cualquier detalle",
+    // Payment terms (phase 4)
+    sec_payment_terms: "Términos de Pago Personalizados",
+    sec_payment_terms_sub: "Configuración específica del contrato de este cliente",
+    lbl_currency: "Moneda del Contrato",
+    lbl_grace_days: "Días de Gracia antes de Vencer",
+    lbl_grace_days_help: "Cuántos días después de la fecha de vencimiento aún no se considera atrasado",
+    lbl_late_interest: "% Interés por Atraso (anual)",
+    lbl_late_interest_help: "Tasa anual que se aplicaría por atrasos (informativo)",
+    lbl_contract_notes: "Notas Contractuales Especiales",
+    lbl_contract_notes_ph: "Cláusulas específicas, condiciones particulares, etc. Visible solo internamente.",
+    lbl_contract_date: "Fecha de Firma del Contrato",
   },
   en: {
     // Brand
@@ -1031,6 +1075,50 @@ const TRANSLATIONS = {
     pi_wa_footer_tail_es: "después de transferir.",
     pi_wa_footer_tail_en: "after transferring.",
     pi_send_help: "The PDF will download and the corresponding app will open with the message pre-filled. Just attach the PDF and send.",
+    // Stage system
+    stage_prospect: "Prospect",
+    stage_interested: "Interested",
+    stage_contracted: "Contracted",
+    stage_active: "Active",
+    stage_progress: "Client Progress",
+    stage_current: "Current Stage",
+    stage_next: "Next Stage",
+    stage_requirements: "Requirements to advance",
+    stage_all_complete: "Ready to advance!",
+    stage_missing: "Still to complete",
+    stage_advance_to: "Mark as",
+    stage_go_to_tab: "Go to this section",
+    stage_confirm_advance: "Confirm advance to next stage?",
+    stage_advanced: "Client advanced to next stage",
+    // Quick create wizard
+    qc_title: "New Prospect",
+    qc_sub: "Basic information to start. You can complete the other details as the client progresses.",
+    qc_type: "Client type",
+    qc_type_individual: "Individual",
+    qc_type_entity: "Company",
+    qc_name: "Full name",
+    qc_company: "Company name",
+    qc_email: "Email",
+    qc_phone: "Phone",
+    qc_source: "How did they hear about us? (optional)",
+    qc_source_ph: "Referral, social media, broker, etc.",
+    qc_create: "Create Prospect",
+    qc_need_name: "Name is required",
+    qc_need_contact: "At least email or phone is required",
+    // Edit full
+    edit_full: "Edit Complete (Advanced View)",
+    edit_full_help: "Opens the full form with all tabs to edit any detail",
+    // Payment terms (phase 4)
+    sec_payment_terms: "Custom Payment Terms",
+    sec_payment_terms_sub: "Contract-specific configuration for this client",
+    lbl_currency: "Contract Currency",
+    lbl_grace_days: "Grace Days before Overdue",
+    lbl_grace_days_help: "How many days after the due date before considered overdue",
+    lbl_late_interest: "Late Interest % (annual)",
+    lbl_late_interest_help: "Annual rate that would apply for delays (informational)",
+    lbl_contract_notes: "Special Contract Notes",
+    lbl_contract_notes_ph: "Specific clauses, particular conditions, etc. Internal view only.",
+    lbl_contract_date: "Contract Signing Date",
   },
 };
 
@@ -1108,6 +1196,100 @@ const fmtModelArea = (model, lang) => {
   return `${sqm.toLocaleString()} m²`;
 };
 
+// ------------------------- Client Stages (simplified UX flow) -------------------------
+
+const STAGES = ["prospect", "interested", "contracted", "active"];
+
+const STAGE_CONFIG = {
+  prospect: {
+    label: "Prospecto",
+    labelEn: "Prospect",
+    color: "#4A6FA5",
+    bg: "#E3EBF5",
+    description: "Primer contacto, información básica",
+    descriptionEn: "First contact, basic information",
+  },
+  interested: {
+    label: "Interesado",
+    labelEn: "Interested",
+    color: "#C9A961",
+    bg: "#F4EBD4",
+    description: "Villa identificada, precio discutido",
+    descriptionEn: "Villa identified, price discussed",
+  },
+  contracted: {
+    label: "Contratado",
+    labelEn: "Contracted",
+    color: "#2D5E3E",
+    bg: "#D4E6D8",
+    description: "KYC completo, contrato firmado, plan de pagos",
+    descriptionEn: "KYC complete, contract signed, payment plan",
+  },
+  active: {
+    label: "Activo",
+    labelEn: "Active",
+    color: "#1A2342",
+    bg: "#D9DDE8",
+    description: "Pagos en curso, villa en construcción/entregada",
+    descriptionEn: "Payments in progress, villa under construction/delivered",
+  },
+};
+
+const getClientStage = (client) => {
+  if (!client) return "prospect";
+  if (client.stage && STAGES.includes(client.stage)) return client.stage;
+  if (client.status === "active" || client.status === "completed") return "active";
+  if (client.status === "contract" || client.status === "reserved") return "contracted";
+  if (client.status === "interested" && client.lotNumber) return "interested";
+  return "prospect";
+};
+
+const getStageRequirements = (client, targetStage) => {
+  const items = [];
+  if (targetStage === "interested") {
+    const name = client.type === "entity" ? client.companyName : client.fullName;
+    items.push({ key: "name", label: "Nombre completo del cliente", labelEn: "Client full name", done: !!name, tab: "personal" });
+    items.push({ key: "contact", label: "Email o teléfono", labelEn: "Email or phone", done: !!(client.email || client.phone), tab: "personal" });
+    items.push({ key: "villa", label: "Villa asignada", labelEn: "Villa assigned", done: !!client.lotNumber, tab: "villa" });
+    items.push({ key: "model", label: "Modelo de villa seleccionado", labelEn: "Villa model selected", done: !!client.villaModel, tab: "villa" });
+  }
+  if (targetStage === "contracted") {
+    items.push({ key: "email", label: "Email confirmado", labelEn: "Email confirmed", done: !!client.email, tab: "personal" });
+    items.push({ key: "phone", label: "Teléfono confirmado", labelEn: "Phone confirmed", done: !!client.phone, tab: "personal" });
+    items.push({ key: "id", label: "Documento de identidad (cédula o pasaporte)", labelEn: "Identity document (ID or passport)", done: !!(client.idNumber || client.passportNumber || client.rnc), tab: "personal" });
+    items.push({ key: "address", label: "Dirección del cliente", labelEn: "Client address", done: !!client.address, tab: "personal" });
+    items.push({ key: "kyc", label: "Formulario KYC completado (Ley 155-17)", labelEn: "KYC form complete (Law 155-17)", done: !!client.kycComplete, tab: "aml" });
+    items.push({ key: "plan", label: "Plan de pagos definido", labelEn: "Payment plan defined", done: !!(client.paymentPlan && client.paymentPlan.installments && client.paymentPlan.installments.length > 0), tab: "payment_plan" });
+    items.push({ key: "contract_doc", label: "Contrato firmado (subido en documentos)", labelEn: "Signed contract (uploaded in documents)", done: !!(client.documents && client.documents.some(d => d.type === "contract")), tab: "documents" });
+  }
+  if (targetStage === "active") {
+    items.push({ key: "initial_payment", label: "Al menos un pago recibido", labelEn: "At least one payment received", done: !!(client.payments && client.payments.some(p => Number(p.amount) > 0)), tab: "payments" });
+  }
+  return items;
+};
+
+const canAdvanceToStage = (client, targetStage) => {
+  const reqs = getStageRequirements(client, targetStage);
+  if (reqs.length === 0) return false;
+  return reqs.every(r => r.done);
+};
+
+const getNextStage = (currentStage) => {
+  const idx = STAGES.indexOf(currentStage);
+  if (idx === -1 || idx === STAGES.length - 1) return null;
+  return STAGES[idx + 1];
+};
+
+const stageToStatus = (stage) => {
+  switch (stage) {
+    case "prospect":   return "lead";
+    case "interested": return "interested";
+    case "contracted": return "contract";
+    case "active":     return "active";
+    default: return "lead";
+  }
+};
+
 // Compute villa pricing — takes optional settings (falls back to defaults)
 const computePrice = (client, settings) => {
   const models = settings?.villaModels || DEFAULT_SETTINGS.villaModels;
@@ -1168,24 +1350,35 @@ const computeCommission = (client, settings) => {
 // ------------------------- Payment Plan Helpers -------------------------
 
 // Determine status of a single installment based on due date and paid amount
-const getInstallmentStatus = (inst) => {
+// graceDays (optional) extends the due date before "overdue" kicks in
+const getInstallmentStatus = (inst, graceDays = 0) => {
   const amount = Number(inst.amount) || 0;
   const paid = Number(inst.paidAmount) || 0;
   if (paid >= amount && amount > 0) return "paid";
   const today = new Date().toISOString().slice(0, 10);
   const due = inst.dueDate;
-  if (due && due < today) return paid > 0 ? "partial_overdue" : "overdue";
+  if (due) {
+    // Apply grace days: effective due date = due + graceDays
+    const grace = Number(graceDays) || 0;
+    if (grace > 0) {
+      const d = new Date(due);
+      d.setDate(d.getDate() + grace);
+      const effectiveDue = d.toISOString().slice(0, 10);
+      if (today > effectiveDue) return paid > 0 ? "partial_overdue" : "overdue";
+    } else if (due < today) {
+      return paid > 0 ? "partial_overdue" : "overdue";
+    }
+  }
   if (paid > 0) return "partial";
   return "pending";
 };
 
 // Compute plan totals: expected, received against plan, pending
-const computePlanTotals = (plan) => {
+const computePlanTotals = (plan, graceDays = 0) => {
   if (!plan || !plan.installments || plan.installments.length === 0) {
     return { expected: 0, received: 0, pending: 0, count: 0, paidCount: 0, overdueCount: 0, upcomingCount: 0 };
   }
   let expected = 0, received = 0, paidCount = 0, overdueCount = 0, upcomingCount = 0;
-  const today = new Date().toISOString().slice(0, 10);
   const weekFromNow = new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10);
 
   plan.installments.forEach(inst => {
@@ -1193,7 +1386,7 @@ const computePlanTotals = (plan) => {
     const paid = Number(inst.paidAmount) || 0;
     expected += amt;
     received += Math.min(paid, amt);
-    const status = getInstallmentStatus(inst);
+    const status = getInstallmentStatus(inst, graceDays);
     if (status === "paid") paidCount++;
     if (status === "overdue" || status === "partial_overdue") overdueCount++;
     if (status === "pending" && inst.dueDate && inst.dueDate <= weekFromNow) upcomingCount++;
@@ -2305,13 +2498,13 @@ function DocumentsSection({ clientId, documents, onDocumentsChange }) {
 }
 
 
-function ClientForm({ initial, onSave, onCancel }) {
+function ClientForm({ initial, initialTab, onSave, onCancel }) {
   const { t, lang } = useT();
   const settings = useSettings();
   const villaModels = settings.villaModels || DEFAULT_SETTINGS.villaModels;
   const lots = settings.lots || DEFAULT_SETTINGS.lots;
   const pricing_cfg = settings.pricing || DEFAULT_SETTINGS.pricing;
-  const [tab, setTab] = useState("type");
+  const [tab, setTab] = useState(initialTab || "type");
   const [data, setData] = useState(() => initial || {
     id: uid(),
     createdAt: new Date().toISOString(),
@@ -2634,12 +2827,46 @@ function ClientForm({ initial, onSave, onCancel }) {
 
       {/* Tab: Payment Plan */}
       {tab === "payment_plan" && (
-        <PaymentPlanSection
-          clientId={data.id}
-          villaTotal={pricing.total}
-          plan={data.paymentPlan}
-          onPlanChange={newPlan => update({ paymentPlan: newPlan })}
-        />
+        <div className="space-y-8">
+          <PaymentPlanSection
+            clientId={data.id}
+            villaTotal={pricing.total}
+            plan={data.paymentPlan}
+            onPlanChange={newPlan => update({ paymentPlan: newPlan })}
+          />
+
+          {/* Custom Payment Terms (Phase 4) */}
+          <div className="pt-6 border-t border-[#1A2342]/10">
+            <SectionTitle subtitle={t("sec_payment_terms_sub")}>{t("sec_payment_terms")}</SectionTitle>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Select label={t("lbl_currency")} value={data.contractCurrency || "USD"} onChange={v => update({ contractCurrency: v })}
+                options={[
+                  { v: "USD", l: "USD — US Dollar" },
+                  { v: "DOP", l: "DOP — Peso Dominicano" },
+                  { v: "EUR", l: "EUR — Euro" },
+                ]} />
+              <Input label={t("lbl_contract_date")} type="date" value={data.contractDate || ""} onChange={v => update({ contractDate: v })} />
+              <div>
+                <Input label={t("lbl_grace_days")} type="number" value={data.graceDays ?? ""} onChange={v => update({ graceDays: v })}
+                  placeholder="5" />
+                <div className="text-[11px] text-[#1A2342]/50 mt-1" style={{ fontFamily: "'Manrope', sans-serif" }}>
+                  {t("lbl_grace_days_help")}
+                </div>
+              </div>
+              <div>
+                <Input label={t("lbl_late_interest")} type="number" value={data.lateInterestPct ?? ""} onChange={v => update({ lateInterestPct: v })}
+                  placeholder="0" />
+                <div className="text-[11px] text-[#1A2342]/50 mt-1" style={{ fontFamily: "'Manrope', sans-serif" }}>
+                  {t("lbl_late_interest_help")}
+                </div>
+              </div>
+            </div>
+            <div className="mt-4">
+              <Input textarea rows={4} label={t("lbl_contract_notes")} value={data.contractNotes || ""} onChange={v => update({ contractNotes: v })}
+                placeholder={t("lbl_contract_notes_ph")} />
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Tab: Payments */}
@@ -2830,7 +3057,200 @@ function ClientForm({ initial, onSave, onCancel }) {
 
 // ------------------------- Client Detail View -------------------------
 
-function ClientDetail({ client, onEdit, onClose, onDelete, onGeneratePayment }) {
+// ------------------------- Stage System Components -------------------------
+
+function StageStepper({ currentStage, lang }) {
+  const currentIdx = STAGES.indexOf(currentStage);
+  return (
+    <div className="w-full">
+      <div className="flex items-center justify-between gap-0 relative">
+        {STAGES.map((stage, idx) => {
+          const cfg = STAGE_CONFIG[stage];
+          const isActive = idx === currentIdx;
+          const isPast = idx < currentIdx;
+          const isFuture = idx > currentIdx;
+          const label = lang === "es" ? cfg.label : cfg.labelEn;
+          return (
+            <React.Fragment key={stage}>
+              <div className="flex flex-col items-center flex-1 min-w-0 relative z-10">
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold transition-all ${
+                  isActive ? "ring-4" : ""
+                }`}
+                  style={{
+                    backgroundColor: isPast || isActive ? cfg.color : "#FDFBF6",
+                    color: isPast || isActive ? "#F5F1E8" : "#1A2342",
+                    border: `2px solid ${isPast || isActive ? cfg.color : "rgba(26,35,66,0.2)"}`,
+                    ringColor: cfg.bg,
+                  }}>
+                  {isPast ? <Check className="w-4 h-4" strokeWidth={2.5} /> : idx + 1}
+                </div>
+                <div className="text-center mt-2 px-1">
+                  <div className={`text-[10px] uppercase tracking-[0.12em] ${isActive ? "font-semibold" : ""}`}
+                    style={{ color: isActive ? cfg.color : "#1A2342", opacity: isFuture ? 0.5 : 1, fontFamily: "'Manrope', sans-serif" }}>
+                    {label}
+                  </div>
+                </div>
+              </div>
+              {idx < STAGES.length - 1 && (
+                <div className="flex-1 h-0.5 -mx-1 mt-4 relative z-0" style={{
+                  backgroundColor: idx < currentIdx ? STAGE_CONFIG[STAGES[idx]].color : "rgba(26,35,66,0.15)",
+                }} />
+              )}
+            </React.Fragment>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function StageRequirementsChecklist({ client, targetStage, onGoToTab, lang }) {
+  const { t } = useT();
+  const items = getStageRequirements(client, targetStage);
+  const allDone = items.every(i => i.done);
+  const nextCfg = STAGE_CONFIG[targetStage];
+
+  if (items.length === 0) return null;
+
+  return (
+    <div className="p-4 bg-[#FDFBF6] border border-[#1A2342]/15 space-y-3">
+      <div className="flex items-center justify-between gap-2 flex-wrap">
+        <div>
+          <div className="text-[10px] uppercase tracking-[0.15em] text-[#1A2342]/60" style={{ fontFamily: "'Manrope', sans-serif" }}>
+            {t("stage_next")}
+          </div>
+          <div className="flex items-center gap-2 mt-1">
+            <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: nextCfg.color }} />
+            <span className="text-[#1A2342] font-semibold" style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: "1.15rem" }}>
+              {lang === "es" ? nextCfg.label : nextCfg.labelEn}
+            </span>
+          </div>
+        </div>
+        {allDone && (
+          <Badge color="#2D5E3E" bg="#D4E6D8">
+            <Check className="w-3 h-3 inline mr-1" strokeWidth={2.5} />
+            {t("stage_all_complete")}
+          </Badge>
+        )}
+      </div>
+
+      <div className="text-[11px] uppercase tracking-[0.12em] text-[#1A2342]/60 pt-2 border-t border-[#1A2342]/10" style={{ fontFamily: "'Manrope', sans-serif" }}>
+        {t("stage_requirements")}:
+      </div>
+
+      <ul className="space-y-1.5">
+        {items.map(item => (
+          <li key={item.key} className="flex items-start gap-2 text-sm" style={{ fontFamily: "'Manrope', sans-serif" }}>
+            {item.done ? (
+              <Check className="w-4 h-4 text-[#2D5E3E] flex-shrink-0 mt-0.5" strokeWidth={2} />
+            ) : (
+              <div className="w-4 h-4 border-2 border-[#1A2342]/25 flex-shrink-0 mt-0.5" />
+            )}
+            <span className={`flex-1 ${item.done ? "text-[#1A2342]/60 line-through" : "text-[#1A2342]"}`}>
+              {lang === "es" ? item.label : item.labelEn}
+            </span>
+            {!item.done && onGoToTab && (
+              <button onClick={() => onGoToTab(item.tab)}
+                className="text-[11px] text-[#4A6FA5] hover:text-[#1A2342] underline underline-offset-2"
+                style={{ fontFamily: "'Manrope', sans-serif" }}>
+                {t("stage_go_to_tab")}
+              </button>
+            )}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+// Quick create wizard — 3 simple fields for new prospect
+function QuickCreateModal({ open, onClose, onCreate }) {
+  const { t, lang } = useT();
+  const [type, setType] = useState("individual");
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [source, setSource] = useState("");
+
+  if (!open) return null;
+
+  const handleCreate = () => {
+    const finalName = name.trim();
+    if (!finalName) {
+      alert(t("qc_need_name"));
+      return;
+    }
+    if (!email.trim() && !phone.trim()) {
+      alert(t("qc_need_contact"));
+      return;
+    }
+    const baseClient = {
+      id: uid(),
+      type,
+      fullName: type === "individual" ? finalName : "",
+      companyName: type === "entity" ? finalName : "",
+      email: email.trim(),
+      phone: phone.trim(),
+      status: "lead",
+      stage: "prospect",
+      notes: source.trim() ? `${lang === "es" ? "Origen" : "Source"}: ${source.trim()}` : "",
+      createdAt: new Date().toISOString(),
+      payments: [],
+      documents: [],
+    };
+    onCreate(baseClient);
+    // Reset form
+    setType("individual");
+    setName("");
+    setEmail("");
+    setPhone("");
+    setSource("");
+  };
+
+  return (
+    <div className="fixed inset-0 bg-[#1A2342]/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <div className="bg-[#F5F1E8] border border-[#1A2342]/15 w-full max-w-md">
+        <div className="px-6 py-4 border-b border-[#1A2342]/10 flex items-center justify-between">
+          <div>
+            <h2 className="text-[#1A2342]" style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: "1.5rem", fontWeight: 500 }}>
+              {t("qc_title")}
+            </h2>
+            <p className="text-[11px] text-[#1A2342]/60 mt-0.5" style={{ fontFamily: "'Manrope', sans-serif" }}>
+              {t("qc_sub")}
+            </p>
+          </div>
+          <button onClick={onClose} className="p-1.5 hover:bg-[#1A2342]/10 transition-colors">
+            <X className="w-4 h-4 text-[#1A2342]/60" strokeWidth={1.5} />
+          </button>
+        </div>
+
+        <div className="p-6 space-y-4">
+          <Select label={t("qc_type")} value={type} onChange={setType}
+            options={[
+              { v: "individual", l: t("qc_type_individual") },
+              { v: "entity",     l: t("qc_type_entity") },
+            ]} />
+
+          <Input label={type === "entity" ? t("qc_company") : t("qc_name")} value={name} onChange={setName} required />
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <Input label={t("qc_email")} type="email" value={email} onChange={setEmail} placeholder="cliente@email.com" />
+            <Input label={t("qc_phone")} value={phone} onChange={setPhone} placeholder="+1 809 555 1234" />
+          </div>
+
+          <Input label={t("qc_source")} value={source} onChange={setSource} placeholder={t("qc_source_ph")} />
+        </div>
+
+        <div className="px-6 py-4 border-t border-[#1A2342]/10 flex justify-end gap-2">
+          <Button onClick={onClose} variant="ghost">{t("cancel")}</Button>
+          <Button onClick={handleCreate} variant="primary" icon={Plus}>{t("qc_create")}</Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ClientDetail({ client, onEdit, onEditTab, onAdvanceStage, onClose, onDelete, onGeneratePayment }) {
   const { t, lang } = useT();
   const settings = useSettings();
   const villaModels = settings.villaModels || DEFAULT_SETTINGS.villaModels;
@@ -2876,10 +3296,45 @@ function ClientDetail({ client, onEdit, onClose, onDelete, onGeneratePayment }) 
         </div>
         <div className="flex gap-2 flex-wrap">
           <Button onClick={() => onGeneratePayment(client)} variant="gold" icon={Receipt}>{t("cd_gen_payment_btn")}</Button>
-          <Button onClick={onEdit} variant="primary" icon={Edit3}>{t("edit")}</Button>
+          <Button onClick={onEdit} variant="primary" icon={Edit3} title={t("edit_full_help")}>{t("edit_full")}</Button>
           <Button onClick={() => { if (confirm(t("lbl_confirm_delete"))) onDelete(client.id); }} variant="danger" icon={Trash2}>{t("delete")}</Button>
         </div>
       </div>
+
+      {/* Stage Progress */}
+      {(() => {
+        const currentStage = getClientStage(client);
+        const nextStage = getNextStage(currentStage);
+        const canAdvance = nextStage ? canAdvanceToStage(client, nextStage) : false;
+        return (
+          <div className="bg-[#FDFBF6] border border-[#1A2342]/10 p-5 space-y-5">
+            <div className="flex items-center justify-between flex-wrap gap-3">
+              <div>
+                <div className="text-[10px] uppercase tracking-[0.2em] text-[#1A2342]/50 mb-1" style={{ fontFamily: "'Manrope', sans-serif" }}>
+                  {t("stage_progress")}
+                </div>
+                <div className="text-[#1A2342]" style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: "1.25rem" }}>
+                  {lang === "es" ? STAGE_CONFIG[currentStage].label : STAGE_CONFIG[currentStage].labelEn}
+                </div>
+              </div>
+              {nextStage && canAdvance && (
+                <Button onClick={onAdvanceStage} variant="gold" icon={Check}>
+                  {t("stage_advance_to")} {lang === "es" ? STAGE_CONFIG[nextStage].label : STAGE_CONFIG[nextStage].labelEn}
+                </Button>
+              )}
+            </div>
+            <StageStepper currentStage={currentStage} lang={lang} />
+            {nextStage && !canAdvance && (
+              <StageRequirementsChecklist
+                client={client}
+                targetStage={nextStage}
+                onGoToTab={onEditTab}
+                lang={lang}
+              />
+            )}
+          </div>
+        );
+      })()}
 
       {/* Villa & Price Summary */}
       {(client.lotNumber || client.villaModel) && (
@@ -5066,8 +5521,54 @@ export default function App() {
     setSelectedClientId(null);
   };
 
-  const openNew = () => { setFormInitial(null); setFormOpen(true); };
-  const openEdit = (client) => { setFormInitial(client); setFormOpen(true); };
+  const [quickCreateOpen, setQuickCreateOpen] = useState(false);
+  const [formInitialTab, setFormInitialTab] = useState(null);
+
+  const openNew = () => { setQuickCreateOpen(true); };
+  const openEdit = (client) => { setFormInitial(client); setFormInitialTab(null); setFormOpen(true); };
+  const openEditTab = (client, tab) => { setFormInitial(client); setFormInitialTab(tab); setFormOpen(true); };
+
+  const handleQuickCreate = async (newClient) => {
+    setQuickCreateOpen(false);
+    const saved = await saveClientToDB(newClient);
+    if (!saved) {
+      alert(language === "es" ? "Error al crear cliente." : "Error creating client.");
+      return;
+    }
+    setClients([...clients, saved]);
+    setSelectedClientId(saved.id);
+    showToast(language === "es" ? "Prospecto creado" : "Prospect created");
+  };
+
+  const handleAdvanceStage = async (client) => {
+    const current = getClientStage(client);
+    const next = getNextStage(current);
+    if (!next) return;
+    if (!canAdvanceToStage(client, next)) {
+      alert(language === "es"
+        ? "Faltan requisitos para avanzar. Completa los campos marcados."
+        : "Requirements missing to advance. Complete the marked fields.");
+      return;
+    }
+    const msg = t("stage_confirm_advance") + "\n\n" +
+      (language === "es" ? STAGE_CONFIG[current].label : STAGE_CONFIG[current].labelEn) +
+      " → " +
+      (language === "es" ? STAGE_CONFIG[next].label : STAGE_CONFIG[next].labelEn);
+    if (!confirm(msg)) return;
+    const updated = {
+      ...client,
+      stage: next,
+      status: stageToStatus(next),
+      updatedAt: new Date().toISOString(),
+    };
+    const saved = await saveClientToDB(updated);
+    if (!saved) {
+      alert(language === "es" ? "Error al guardar." : "Error saving.");
+      return;
+    }
+    setClients(clients.map(c => c.id === saved.id ? saved : c));
+    showToast(t("stage_advanced"));
+  };
 
   const selectedClient = selectedClientId ? clients.find(c => c.id === selectedClientId) : null;
 
@@ -5213,6 +5714,8 @@ export default function App() {
             <ClientDetail
               client={selectedClient}
               onEdit={() => openEdit(selectedClient)}
+              onEditTab={(tab) => openEditTab(selectedClient, tab)}
+              onAdvanceStage={() => handleAdvanceStage(selectedClient)}
               onClose={() => setSelectedClientId(null)}
               onDelete={handleDelete}
               onGeneratePayment={(c) => setPaymentInstructionFor(c)}
@@ -5255,8 +5758,15 @@ export default function App() {
       {/* Form Modal */}
       <Modal open={formOpen} onClose={() => { setFormOpen(false); setFormInitial(null); }}
         title={formInitial ? t("form_edit_title") : t("form_new_title")} size="xl">
-        {formOpen && <ClientForm initial={formInitial} onSave={handleSave} onCancel={() => { setFormOpen(false); setFormInitial(null); }} />}
+        {formOpen && <ClientForm initial={formInitial} initialTab={formInitialTab} onSave={handleSave} onCancel={() => { setFormOpen(false); setFormInitial(null); setFormInitialTab(null); }} />}
       </Modal>
+
+      {/* Quick Create Modal (for new prospects) */}
+      <QuickCreateModal
+        open={quickCreateOpen}
+        onClose={() => setQuickCreateOpen(false)}
+        onCreate={handleQuickCreate}
+      />
 
       {/* Payment Instruction Modal */}
       <Modal open={!!paymentInstructionFor} onClose={() => setPaymentInstructionFor(null)}
