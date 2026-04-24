@@ -437,6 +437,27 @@ const TRANSLATIONS = {
     settings_model_id_exists: "Ya existe un modelo con ese ID",
     settings_lot_number_required: "El número de lote es obligatorio",
     settings_lot_exists: "Ya existe un lote con ese número",
+    // Commission
+    sec_commission: "Comisión del Broker",
+    sec_commission_sub: "Información del vendedor/broker externo y cálculo de comisión (no aparece en documentos del cliente)",
+    lbl_broker_name: "Nombre del Broker",
+    lbl_broker_phone: "Teléfono del Broker",
+    lbl_broker_email: "Email del Broker",
+    lbl_broker_company: "Empresa / Inmobiliaria",
+    lbl_commission_pct: "% Comisión",
+    lbl_commission_pct_ph: "Deja vacío para usar default",
+    lbl_commission_total: "Comisión Total",
+    lbl_commission_earned: "Ganado por Broker",
+    lbl_commission_paid: "Pagado al Broker",
+    lbl_commission_pending: "Pendiente al Broker",
+    lbl_broker_paid_amount: "Monto Pagado al Broker (USD)",
+    lbl_broker_notes: "Notas sobre el Broker",
+    lbl_commission_base_note: "Calculada sobre precio base de villa (no incluye Smart Living ni muebles)",
+    lbl_commission_progress_note: "La comisión se gana proporcionalmente según el cliente paga",
+    settings_default_commission: "% Comisión Default para Brokers",
+    settings_default_commission_sub: "Porcentaje por defecto al asignar un broker a un cliente (editable caso por caso)",
+    // Excel
+    excel_commission_sheet: "Comisiones",
   },
   en: {
     // Brand
@@ -793,6 +814,27 @@ const TRANSLATIONS = {
     settings_model_id_exists: "A model with that ID already exists",
     settings_lot_number_required: "Lot number is required",
     settings_lot_exists: "A lot with that number already exists",
+    // Commission
+    sec_commission: "Broker Commission",
+    sec_commission_sub: "External broker/agent information and commission calculation (does not appear in client documents)",
+    lbl_broker_name: "Broker Name",
+    lbl_broker_phone: "Broker Phone",
+    lbl_broker_email: "Broker Email",
+    lbl_broker_company: "Company / Agency",
+    lbl_commission_pct: "Commission %",
+    lbl_commission_pct_ph: "Leave empty to use default",
+    lbl_commission_total: "Total Commission",
+    lbl_commission_earned: "Earned by Broker",
+    lbl_commission_paid: "Paid to Broker",
+    lbl_commission_pending: "Pending to Broker",
+    lbl_broker_paid_amount: "Amount Paid to Broker (USD)",
+    lbl_broker_notes: "Broker Notes",
+    lbl_commission_base_note: "Calculated on villa base price (excludes Smart Living and furniture)",
+    lbl_commission_progress_note: "Commission is earned proportionally as client pays",
+    settings_default_commission: "Default Broker Commission %",
+    settings_default_commission_sub: "Default percentage when assigning a broker to a client (editable per case)",
+    // Excel
+    excel_commission_sheet: "Commissions",
   },
 };
 
@@ -869,6 +911,31 @@ const paidPercentage = (client, settings) => {
   const { total } = computePrice(client, settings);
   if (!total) return 0;
   return Math.min(100, (paidAmount(client) / total) * 100);
+};
+
+// Compute broker commission — calculated on BASE villa price only (not smart living/furniture)
+// Returns { pct, totalCommission, earnedByBroker, paidToBroker, pendingToBroker }
+const computeCommission = (client, settings) => {
+  if (!client.brokerName) {
+    return { pct: 0, totalCommission: 0, earnedByBroker: 0, paidToBroker: 0, pendingToBroker: 0 };
+  }
+  const defaultPct = settings?.pricing?.defaultCommissionPct ?? DEFAULT_SETTINGS.pricing.defaultCommissionPct;
+  const pct = client.brokerCommissionPct != null && client.brokerCommissionPct !== ""
+    ? Number(client.brokerCommissionPct)
+    : defaultPct;
+
+  const price = computePrice(client, settings);
+  const totalCommission = (price.base * pct) / 100;
+
+  // Proportional: if client paid X% of total villa price, broker has earned X% of commission
+  const paid = paidAmount(client);
+  const progress = price.total > 0 ? Math.min(1, paid / price.total) : 0;
+  const earnedByBroker = totalCommission * progress;
+
+  const paidToBroker = Number(client.brokerPaidAmount) || 0;
+  const pendingToBroker = Math.max(0, earnedByBroker - paidToBroker);
+
+  return { pct, totalCommission, earnedByBroker, paidToBroker, pendingToBroker };
 };
 
 // ------------------------- Storage Layer (Supabase) -------------------------
@@ -1058,6 +1125,7 @@ const DEFAULT_SETTINGS = {
     pricePerSqft: 271,
     pricePerSqm: 2900,
     smartLivingPrice: 71200,
+    defaultCommissionPct: 5,
   },
   villaModels: {
     amarillo: { name: "AMBAR Amarillo", sqft: 4305, sqm: 400, color: "#D4A24C", bedrooms: "4+", bathrooms: "5.5" },
@@ -1261,6 +1329,30 @@ async function exportToExcel(clients, settings) {
   });
   const ws6 = sheetjs.utils.json_to_sheet(villasRows);
   sheetjs.utils.book_append_sheet(wb, ws6, "Inventario Villas");
+
+  // Sheet 7: Comisiones de Brokers
+  const commissionRows = clients.filter(c => c.brokerName).map(c => {
+    const comm = computeCommission(c, settings);
+    return {
+      "ID Cliente": c.id,
+      "Cliente": c.fullName || c.companyName || "",
+      "Villa #": c.lotNumber || "",
+      "Broker": c.brokerName,
+      "Empresa Broker": c.brokerCompany || "",
+      "Teléfono Broker": c.brokerPhone || "",
+      "Email Broker": c.brokerEmail || "",
+      "% Comisión": comm.pct,
+      "Comisión Total": comm.totalCommission,
+      "Ganado por Broker": comm.earnedByBroker,
+      "Pagado al Broker": comm.paidToBroker,
+      "Pendiente al Broker": comm.pendingToBroker,
+      "Notas": c.brokerNotes || "",
+    };
+  });
+  if (commissionRows.length > 0) {
+    const ws7 = sheetjs.utils.json_to_sheet(commissionRows);
+    sheetjs.utils.book_append_sheet(wb, ws7, "Comisiones");
+  }
 
   const fname = `AMBAR_Clientes_${new Date().toISOString().slice(0,10)}.xlsx`;
   sheetjs.writeFile(wb, fname);
@@ -1626,13 +1718,14 @@ function ClientForm({ initial, onSave, onCancel }) {
   const update = (patch) => setData(d => ({ ...d, ...patch, updatedAt: new Date().toISOString() }));
 
   const tabs = [
-    { v: "type",      l: t("tab_type"),      icon: UserCircle },
-    { v: "personal",  l: t("tab_personal"),  icon: FileText },
-    { v: "villa",     l: t("tab_villa"),     icon: Home },
-    { v: "aml",       l: t("tab_aml"),       icon: Shield },
-    { v: "payments",  l: t("tab_payments"),  icon: CreditCard },
-    { v: "documents", l: t("tab_documents"), icon: Paperclip },
-    { v: "notes",     l: t("tab_notes"),     icon: ClipboardList },
+    { v: "type",       l: t("tab_type"),       icon: UserCircle },
+    { v: "personal",   l: t("tab_personal"),   icon: FileText },
+    { v: "villa",      l: t("tab_villa"),      icon: Home },
+    { v: "aml",        l: t("tab_aml"),        icon: Shield },
+    { v: "payments",   l: t("tab_payments"),   icon: CreditCard },
+    { v: "commission", l: t("sec_commission"), icon: Briefcase },
+    { v: "documents",  l: t("tab_documents"),  icon: Paperclip },
+    { v: "notes",      l: t("tab_notes"),      icon: ClipboardList },
   ];
 
   const pricing = computePrice(data, settings);
@@ -1964,6 +2057,77 @@ function ClientForm({ initial, onSave, onCancel }) {
         </div>
       )}
 
+      {/* Tab: Commission */}
+      {tab === "commission" && (
+        <div className="space-y-6">
+          <SectionTitle subtitle={t("sec_commission_sub")}>{t("sec_commission")}</SectionTitle>
+
+          <div className="p-4 bg-[#FDFBF6] border border-[#1A2342]/10 space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Input label={t("lbl_broker_name")} value={data.brokerName} onChange={v => update({ brokerName: v })} />
+              <Input label={t("lbl_broker_company")} value={data.brokerCompany} onChange={v => update({ brokerCompany: v })} />
+              <Input label={t("lbl_broker_phone")} value={data.brokerPhone} onChange={v => update({ brokerPhone: v })} placeholder="+1 809 555 1234" />
+              <Input label={t("lbl_broker_email")} type="email" value={data.brokerEmail} onChange={v => update({ brokerEmail: v })} />
+            </div>
+          </div>
+
+          {data.brokerName && (
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Input label={t("lbl_commission_pct")} type="number" value={data.brokerCommissionPct} onChange={v => update({ brokerCommissionPct: v })}
+                  placeholder={`${t("lbl_commission_pct_ph")} (${settings.pricing?.defaultCommissionPct ?? 5}%)`} />
+                <Input label={t("lbl_broker_paid_amount")} type="number" value={data.brokerPaidAmount} onChange={v => update({ brokerPaidAmount: v })} />
+              </div>
+
+              {/* Commission breakdown — internal only */}
+              <div className="p-4 bg-[#1A2342] text-[#F5F1E8] space-y-2">
+                <div className="text-[10px] uppercase tracking-[0.2em] text-[#F5F1E8]/60 mb-3" style={{ fontFamily: "'Manrope', sans-serif" }}>
+                  {t("sec_commission")}
+                </div>
+                {(() => {
+                  const c = computeCommission(data, settings);
+                  return (
+                    <>
+                      <div className="flex justify-between text-sm" style={{ fontFamily: "'Manrope', sans-serif" }}>
+                        <span className="text-[#F5F1E8]/80">{t("lbl_commission_pct")}</span>
+                        <span>{c.pct}%</span>
+                      </div>
+                      <div className="flex justify-between text-sm" style={{ fontFamily: "'Manrope', sans-serif" }}>
+                        <span className="text-[#F5F1E8]/80">{t("lbl_commission_total")}</span>
+                        <span>{fmtUSD(c.totalCommission)}</span>
+                      </div>
+                      <div className="flex justify-between text-sm" style={{ fontFamily: "'Manrope', sans-serif" }}>
+                        <span className="text-[#F5F1E8]/80">{t("lbl_commission_earned")}</span>
+                        <span className="text-[#C9A961]">{fmtUSD(c.earnedByBroker)}</span>
+                      </div>
+                      <div className="flex justify-between text-sm" style={{ fontFamily: "'Manrope', sans-serif" }}>
+                        <span className="text-[#F5F1E8]/80">{t("lbl_commission_paid")}</span>
+                        <span>{fmtUSD(c.paidToBroker)}</span>
+                      </div>
+                      <div className="border-t border-[#F5F1E8]/20 pt-2 mt-2 flex justify-between" style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: "1.25rem" }}>
+                        <span>{t("lbl_commission_pending")}</span>
+                        <span className={c.pendingToBroker > 0 ? "text-[#D4A24C]" : ""}>{fmtUSD(c.pendingToBroker)}</span>
+                      </div>
+                    </>
+                  );
+                })()}
+              </div>
+
+              <div className="p-3 bg-[#FDFBF6] border-l-2 border-[#C9A961]">
+                <div className="text-[11px] text-[#1A2342]/70 mb-1" style={{ fontFamily: "'Manrope', sans-serif" }}>
+                  ℹ {t("lbl_commission_base_note")}
+                </div>
+                <div className="text-[11px] text-[#1A2342]/70" style={{ fontFamily: "'Manrope', sans-serif" }}>
+                  ℹ {t("lbl_commission_progress_note")}
+                </div>
+              </div>
+
+              <Input textarea rows={3} label={t("lbl_broker_notes")} value={data.brokerNotes} onChange={v => update({ brokerNotes: v })} />
+            </>
+          )}
+        </div>
+      )}
+
       {/* Tab: Documents */}
       {tab === "documents" && (
         <DocumentsSection
@@ -2206,6 +2370,46 @@ function ClientDetail({ client, onEdit, onClose, onDelete, onGeneratePayment }) 
         </div>
       )}
 
+      {/* Broker Commission — internal view */}
+      {client.brokerName && (() => {
+        const c = computeCommission(client, settings);
+        return (
+          <div>
+            <SectionTitle subtitle={t("sec_commission_sub")}>{t("sec_commission")}</SectionTitle>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 mb-4">
+              <InfoRow label={t("lbl_broker_name")} value={client.brokerName} icon={Briefcase} />
+              <InfoRow label={t("lbl_broker_company")} value={client.brokerCompany} />
+              <InfoRow label={t("lbl_broker_phone")} value={client.brokerPhone} icon={Phone} />
+              <InfoRow label={t("lbl_broker_email")} value={client.brokerEmail} icon={Mail} />
+            </div>
+            <div className="p-4 bg-[#FDFBF6] border border-[#1A2342]/10 grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div>
+                <div className="text-[10px] uppercase tracking-[0.15em] text-[#1A2342]/50 mb-1" style={{ fontFamily: "'Manrope', sans-serif" }}>{t("lbl_commission_total")}</div>
+                <div className="text-[#1A2342]" style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: "1.2rem" }}>{fmtUSD(c.totalCommission)}</div>
+                <div className="text-[10px] text-[#1A2342]/50" style={{ fontFamily: "'Manrope', sans-serif" }}>{c.pct}%</div>
+              </div>
+              <div>
+                <div className="text-[10px] uppercase tracking-[0.15em] text-[#1A2342]/50 mb-1" style={{ fontFamily: "'Manrope', sans-serif" }}>{t("lbl_commission_earned")}</div>
+                <div className="text-[#C9A961]" style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: "1.2rem" }}>{fmtUSD(c.earnedByBroker)}</div>
+              </div>
+              <div>
+                <div className="text-[10px] uppercase tracking-[0.15em] text-[#1A2342]/50 mb-1" style={{ fontFamily: "'Manrope', sans-serif" }}>{t("lbl_commission_paid")}</div>
+                <div className="text-[#1A2342]" style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: "1.2rem" }}>{fmtUSD(c.paidToBroker)}</div>
+              </div>
+              <div>
+                <div className="text-[10px] uppercase tracking-[0.15em] text-[#1A2342]/50 mb-1" style={{ fontFamily: "'Manrope', sans-serif" }}>{t("lbl_commission_pending")}</div>
+                <div className={c.pendingToBroker > 0 ? "text-[#D4A24C]" : "text-[#1A2342]"} style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: "1.2rem" }}>{fmtUSD(c.pendingToBroker)}</div>
+              </div>
+            </div>
+            {client.brokerNotes && (
+              <div className="p-3 bg-[#FDFBF6] text-sm text-[#1A2342] whitespace-pre-wrap border border-[#1A2342]/10 mt-3" style={{ fontFamily: "'Manrope', sans-serif" }}>
+                {client.brokerNotes}
+              </div>
+            )}
+          </div>
+        );
+      })()}
+
       {/* Documents */}
       {client.documents && client.documents.length > 0 && (
         <div>
@@ -2271,7 +2475,16 @@ function Dashboard({ clients, onNewClient, onExport, onGoToClients, onGoToVillas
     const active = clients.filter(c => ["reserved","contract","active"].includes(c.status)).length;
     const byStatus = STATUS_ORDER.reduce((acc, s) => { acc[s] = clients.filter(c => c.status === s).length; return acc; }, {});
     const soldLots = new Set(clients.filter(c => c.lotNumber && c.status !== "cancelled").map(c => String(c.lotNumber)));
-    return { totalRevenue, totalPaid, active, byStatus, soldLots: soldLots.size, availableLots: totalLots - soldLots.size };
+    // Commission totals
+    let totalCommissions = 0, earnedCommissions = 0, pendingCommissions = 0;
+    clients.forEach(c => {
+      if (!c.brokerName) return;
+      const comm = computeCommission(c, settings);
+      totalCommissions += comm.totalCommission;
+      earnedCommissions += comm.earnedByBroker;
+      pendingCommissions += comm.pendingToBroker;
+    });
+    return { totalRevenue, totalPaid, active, byStatus, soldLots: soldLots.size, availableLots: totalLots - soldLots.size, totalCommissions, earnedCommissions, pendingCommissions };
   }, [clients, settings, totalLots]);
 
   const recentClients = useMemo(() => [...clients].sort((a, b) => (b.updatedAt || b.createdAt || "").localeCompare(a.updatedAt || a.createdAt || "")).slice(0, 5), [clients]);
@@ -2307,6 +2520,27 @@ function Dashboard({ clients, onNewClient, onExport, onGoToClients, onGoToVillas
           </div>
         ))}
       </div>
+
+      {/* Commissions Summary — shown only if there are brokers */}
+      {stats.totalCommissions > 0 && (
+        <div>
+          <SectionTitle subtitle={t("sec_commission_sub")}>{t("sec_commission")}</SectionTitle>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-0 border border-[#1A2342]/15">
+            <div className="p-5 border-b sm:border-b-0 sm:border-r border-[#1A2342]/15">
+              <div className="text-[10px] uppercase tracking-[0.2em] text-[#1A2342]/50 mb-2" style={{ fontFamily: "'Manrope', sans-serif" }}>{t("lbl_commission_total")}</div>
+              <div className="text-[#1A2342]" style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: "1.75rem", fontWeight: 500 }}>{fmtUSD(stats.totalCommissions)}</div>
+            </div>
+            <div className="p-5 border-b sm:border-b-0 sm:border-r border-[#1A2342]/15">
+              <div className="text-[10px] uppercase tracking-[0.2em] text-[#1A2342]/50 mb-2" style={{ fontFamily: "'Manrope', sans-serif" }}>{t("lbl_commission_earned")}</div>
+              <div className="text-[#C9A961]" style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: "1.75rem", fontWeight: 500 }}>{fmtUSD(stats.earnedCommissions)}</div>
+            </div>
+            <div className="p-5">
+              <div className="text-[10px] uppercase tracking-[0.2em] text-[#1A2342]/50 mb-2" style={{ fontFamily: "'Manrope', sans-serif" }}>{t("lbl_commission_pending")}</div>
+              <div className={stats.pendingCommissions > 0 ? "text-[#D4A24C]" : "text-[#1A2342]"} style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: "1.75rem", fontWeight: 500 }}>{fmtUSD(stats.pendingCommissions)}</div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Pipeline breakdown */}
       <div>
@@ -2725,6 +2959,15 @@ function SettingsView({ settings, onSave }) {
             }} />
           <Input label={t("settings_smart_price")} type="number" value={draft.pricing?.smartLivingPrice || ""}
             onChange={v => update("pricing","smartLivingPrice", Number(v) || 0)} />
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+          <div>
+            <Input label={t("settings_default_commission")} type="number" value={draft.pricing?.defaultCommissionPct ?? ""}
+              onChange={v => update("pricing","defaultCommissionPct", Number(v) || 0)} placeholder="5" />
+            <div className="text-[11px] text-[#1A2342]/50 mt-1" style={{ fontFamily: "'Manrope', sans-serif" }}>
+              {t("settings_default_commission_sub")}
+            </div>
+          </div>
         </div>
       </div>
 
