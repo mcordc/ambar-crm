@@ -8,7 +8,7 @@ import {
   AlertCircle, TrendingUp, Eye, ArrowLeft, MapPin, Calendar,
   FileText, Phone, Mail, Globe, Briefcase, Copy, Loader2,
   Settings, Printer, Receipt, Languages, LogOut, Lock,
-  FolderOpen, File, FileImage, Paperclip
+  FolderOpen, File, FileImage, Paperclip, CalendarDays, AlertTriangle, Clock
 } from "lucide-react";
 
 // ------------------------- Supabase Client -------------------------
@@ -458,6 +458,49 @@ const TRANSLATIONS = {
     settings_default_commission_sub: "Porcentaje por defecto al asignar un broker a un cliente (editable caso por caso)",
     // Excel
     excel_commission_sheet: "Comisiones",
+    // Payment Plan
+    tab_payment_plan: "Plan de Pagos",
+    sec_payment_plan: "Plan de Pagos Contractual",
+    sec_payment_plan_sub: "Cronograma de cuotas acordadas según el contrato de venta",
+    plan_apply_template: "Aplicar Plantilla",
+    plan_template_title: "Seleccionar Plantilla de Pagos",
+    plan_template_sub: "Genera automáticamente las cuotas según el esquema elegido. Podrás editarlas luego.",
+    plan_add_installment: "Añadir Cuota",
+    plan_no_plan: "Este cliente no tiene plan de pagos. Aplica una plantilla o añade cuotas manualmente.",
+    plan_concept: "Concepto",
+    plan_concept_en: "Concepto (Inglés)",
+    plan_due_date: "Fecha Vencimiento",
+    plan_amount: "Monto (USD)",
+    plan_percentage: "% del Total",
+    plan_paid_amount: "Pagado",
+    plan_status: "Estado",
+    plan_notes: "Notas",
+    plan_actions: "Acciones",
+    plan_total_expected: "Total Plan",
+    plan_total_received: "Recibido",
+    plan_total_pending: "Pendiente",
+    plan_villa_total: "Precio Villa",
+    plan_mismatch_warning: "El total del plan no coincide con el precio de la villa",
+    plan_confirm_replace: "¿Reemplazar el plan actual? Las cuotas existentes se borrarán.",
+    plan_confirm_delete_inst: "¿Eliminar esta cuota?",
+    plan_start_date: "Fecha de Inicio",
+    plan_start_date_help: "La primera cuota usará esta fecha; las demás se espaciarán automáticamente",
+    plan_apply: "Aplicar",
+    plan_include_in_pdf: "Incluir cronograma en el PDF del instructivo",
+    // Status
+    plan_status_paid: "Pagada",
+    plan_status_pending: "Pendiente",
+    plan_status_partial: "Parcial",
+    plan_status_overdue: "Vencida",
+    plan_status_partial_overdue: "Parcial Vencida",
+    // Dashboard alerts
+    alert_overdue_installments: "cuotas vencidas",
+    alert_upcoming_installments: "cuotas próximas a vencer",
+    // PDF
+    pdf_payment_schedule: "Cronograma de Pagos",
+    pdf_payment_schedule_en: "Payment Schedule",
+    pdf_current_payment: "ESTA CUOTA",
+    pdf_current_payment_en: "THIS PAYMENT",
   },
   en: {
     // Brand
@@ -835,6 +878,49 @@ const TRANSLATIONS = {
     settings_default_commission_sub: "Default percentage when assigning a broker to a client (editable per case)",
     // Excel
     excel_commission_sheet: "Commissions",
+    // Payment Plan
+    tab_payment_plan: "Payment Plan",
+    sec_payment_plan: "Contractual Payment Plan",
+    sec_payment_plan_sub: "Schedule of installments agreed per the sales contract",
+    plan_apply_template: "Apply Template",
+    plan_template_title: "Select Payment Template",
+    plan_template_sub: "Automatically generate installments from the chosen schedule. You can edit them afterwards.",
+    plan_add_installment: "Add Installment",
+    plan_no_plan: "This client has no payment plan. Apply a template or add installments manually.",
+    plan_concept: "Concept",
+    plan_concept_en: "Concept (English)",
+    plan_due_date: "Due Date",
+    plan_amount: "Amount (USD)",
+    plan_percentage: "% of Total",
+    plan_paid_amount: "Paid",
+    plan_status: "Status",
+    plan_notes: "Notes",
+    plan_actions: "Actions",
+    plan_total_expected: "Plan Total",
+    plan_total_received: "Received",
+    plan_total_pending: "Pending",
+    plan_villa_total: "Villa Price",
+    plan_mismatch_warning: "Plan total does not match villa price",
+    plan_confirm_replace: "Replace the current plan? Existing installments will be deleted.",
+    plan_confirm_delete_inst: "Delete this installment?",
+    plan_start_date: "Start Date",
+    plan_start_date_help: "First installment uses this date; others will be spaced automatically",
+    plan_apply: "Apply",
+    plan_include_in_pdf: "Include schedule in the instruction PDF",
+    // Status
+    plan_status_paid: "Paid",
+    plan_status_pending: "Pending",
+    plan_status_partial: "Partial",
+    plan_status_overdue: "Overdue",
+    plan_status_partial_overdue: "Partial Overdue",
+    // Dashboard alerts
+    alert_overdue_installments: "overdue installments",
+    alert_upcoming_installments: "upcoming installments",
+    // PDF
+    pdf_payment_schedule: "Payment Schedule",
+    pdf_payment_schedule_en: "Cronograma de Pagos",
+    pdf_current_payment: "THIS PAYMENT",
+    pdf_current_payment_en: "ESTA CUOTA",
   },
 };
 
@@ -937,6 +1023,131 @@ const computeCommission = (client, settings) => {
 
   return { pct, totalCommission, earnedByBroker, paidToBroker, pendingToBroker };
 };
+
+// ------------------------- Payment Plan Helpers -------------------------
+
+// Determine status of a single installment based on due date and paid amount
+const getInstallmentStatus = (inst) => {
+  const amount = Number(inst.amount) || 0;
+  const paid = Number(inst.paidAmount) || 0;
+  if (paid >= amount && amount > 0) return "paid";
+  const today = new Date().toISOString().slice(0, 10);
+  const due = inst.dueDate;
+  if (due && due < today) return paid > 0 ? "partial_overdue" : "overdue";
+  if (paid > 0) return "partial";
+  return "pending";
+};
+
+// Compute plan totals: expected, received against plan, pending
+const computePlanTotals = (plan) => {
+  if (!plan || !plan.installments || plan.installments.length === 0) {
+    return { expected: 0, received: 0, pending: 0, count: 0, paidCount: 0, overdueCount: 0, upcomingCount: 0 };
+  }
+  let expected = 0, received = 0, paidCount = 0, overdueCount = 0, upcomingCount = 0;
+  const today = new Date().toISOString().slice(0, 10);
+  const weekFromNow = new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10);
+
+  plan.installments.forEach(inst => {
+    const amt = Number(inst.amount) || 0;
+    const paid = Number(inst.paidAmount) || 0;
+    expected += amt;
+    received += Math.min(paid, amt);
+    const status = getInstallmentStatus(inst);
+    if (status === "paid") paidCount++;
+    if (status === "overdue" || status === "partial_overdue") overdueCount++;
+    if (status === "pending" && inst.dueDate && inst.dueDate <= weekFromNow) upcomingCount++;
+  });
+
+  return {
+    expected,
+    received,
+    pending: expected - received,
+    count: plan.installments.length,
+    paidCount,
+    overdueCount,
+    upcomingCount,
+  };
+};
+
+// Apply a template to generate installments. Returns new array.
+// totalPrice = full villa price to distribute
+// startDate = ISO date (YYYY-MM-DD) for first installment
+const applyPaymentTemplate = (templateId, totalPrice, startDate) => {
+  const total = Number(totalPrice) || 0;
+  const start = startDate || new Date().toISOString().slice(0, 10);
+
+  const addDays = (isoDate, days) => {
+    const d = new Date(isoDate);
+    d.setDate(d.getDate() + days);
+    return d.toISOString().slice(0, 10);
+  };
+  const addMonths = (isoDate, months) => {
+    const d = new Date(isoDate);
+    d.setMonth(d.getMonth() + months);
+    return d.toISOString().slice(0, 10);
+  };
+
+  const mk = (concept, conceptEn, pct, dueDate) => ({
+    id: uid(),
+    concept,
+    conceptEn,
+    percentage: pct,
+    amount: Math.round(total * pct / 100 * 100) / 100,
+    dueDate,
+    paidAmount: 0,
+    notes: "",
+    linkedPaymentIds: [],
+  });
+
+  switch (templateId) {
+    case "30_70":
+      return [
+        mk("Depósito de Reserva", "Reservation Deposit", 30, start),
+        mk("Saldo al Firmar Escritura", "Balance at Closing", 70, addMonths(start, 3)),
+      ];
+    case "30_30_40":
+      return [
+        mk("Depósito de Reserva", "Reservation Deposit", 30, start),
+        mk("Firma de Contrato", "Contract Signing", 30, addMonths(start, 2)),
+        mk("Entrega", "Delivery", 40, addMonths(start, 6)),
+      ];
+    case "10_30_30_30":
+      return [
+        mk("Depósito de Reserva", "Reservation Deposit", 10, start),
+        mk("Depósito Inicial", "Initial Deposit", 30, addMonths(start, 1)),
+        mk("Pago Intermedio", "Intermediate Payment", 30, addMonths(start, 4)),
+        mk("Pago Final", "Final Payment", 30, addMonths(start, 8)),
+      ];
+    case "5_25_70":
+      return [
+        mk("Reserva", "Reservation", 5, start),
+        mk("Depósito Inicial", "Initial Deposit", 25, addMonths(start, 1)),
+        mk("Saldo", "Balance", 70, addMonths(start, 6)),
+      ];
+    case "5_monthly":
+      return Array.from({ length: 5 }, (_, i) =>
+        mk(`Cuota ${i + 1} de 5`, `Installment ${i + 1} of 5`, 20, addMonths(start, i))
+      );
+    case "12_monthly":
+      return Array.from({ length: 12 }, (_, i) =>
+        mk(`Cuota ${i + 1} de 12`, `Installment ${i + 1} of 12`, 100 / 12, addMonths(start, i))
+      );
+    default:
+      return [];
+  }
+};
+
+const PAYMENT_TEMPLATES = [
+  { id: "30_70",        labelEs: "30% / 70%",              descEs: "Reserva 30%, saldo al firmar",        labelEn: "30% / 70%",            descEn: "30% deposit, 70% at closing" },
+  { id: "30_30_40",     labelEs: "30% / 30% / 40%",        descEs: "Reserva, contrato, entrega",          labelEn: "30% / 30% / 40%",      descEn: "Deposit, contract, delivery" },
+  { id: "10_30_30_30",  labelEs: "10% / 30% / 30% / 30%",  descEs: "Reserva, inicial, intermedio, final", labelEn: "10% / 30% / 30% / 30%",descEn: "Deposit, initial, intermediate, final" },
+  { id: "5_25_70",      labelEs: "5% / 25% / 70%",         descEs: "Reserva mínima, inicial, saldo",      labelEn: "5% / 25% / 70%",       descEn: "Minimum deposit, initial, balance" },
+  { id: "5_monthly",    labelEs: "5 cuotas mensuales",     descEs: "20% cada mes por 5 meses",            labelEn: "5 monthly installments",descEn: "20% each for 5 months" },
+  { id: "12_monthly",   labelEs: "12 cuotas mensuales",    descEs: "~8.33% cada mes por 12 meses",        labelEn: "12 monthly installments",descEn: "~8.33% each for 12 months" },
+  { id: "custom",       labelEs: "Personalizado",          descEs: "Definir cuotas manualmente",           labelEn: "Custom",               descEn: "Define installments manually" },
+];
+
+// ------------------------- Paid Percentage -------------------------
 
 // ------------------------- Storage Layer (Supabase) -------------------------
 
@@ -1491,7 +1702,266 @@ const EmptyState = ({ icon: Icon, title, subtitle, action }) => (
 
 // ------------------------- Client Form -------------------------
 
-// ------------------------- Documents Section -------------------------
+// ------------------------- Payment Plan Section -------------------------
+
+function PaymentPlanSection({ clientId, villaTotal, plan, onPlanChange }) {
+  const { t, lang } = useT();
+  const [showTemplateModal, setShowTemplateModal] = useState(false);
+
+  const installments = plan?.installments || [];
+  const includeInPdf = plan?.includeInPdf !== false; // default true
+  const totals = computePlanTotals(plan);
+
+  const updatePlan = (updates) => {
+    onPlanChange({ ...(plan || { includeInPdf: true, installments: [] }), ...updates });
+  };
+
+  const updateInstallment = (id, field, value) => {
+    const next = installments.map(inst => {
+      if (inst.id !== id) return inst;
+      const updated = { ...inst, [field]: value };
+      // Auto-recalculate amount if percentage changes and we have villa total
+      if (field === "percentage" && villaTotal > 0) {
+        updated.amount = Math.round(villaTotal * Number(value) / 100 * 100) / 100;
+      }
+      // Auto-recalculate percentage if amount changes and we have villa total
+      if (field === "amount" && villaTotal > 0) {
+        updated.percentage = Math.round(Number(value) / villaTotal * 100 * 100) / 100;
+      }
+      return updated;
+    });
+    updatePlan({ installments: next });
+  };
+
+  const addInstallment = () => {
+    const newInst = {
+      id: uid(),
+      concept: "",
+      conceptEn: "",
+      percentage: 0,
+      amount: 0,
+      dueDate: todayISO(),
+      paidAmount: 0,
+      notes: "",
+      linkedPaymentIds: [],
+    };
+    updatePlan({ installments: [...installments, newInst] });
+  };
+
+  const removeInstallment = (id) => {
+    if (!confirm(t("plan_confirm_delete_inst"))) return;
+    updatePlan({ installments: installments.filter(i => i.id !== id) });
+  };
+
+  const applyTemplate = (templateId, startDate) => {
+    if (installments.length > 0 && !confirm(t("plan_confirm_replace"))) return;
+    const newInstallments = applyPaymentTemplate(templateId, villaTotal, startDate);
+    updatePlan({ installments: newInstallments });
+    setShowTemplateModal(false);
+  };
+
+  const STATUS_STYLES = {
+    paid:             { color: "#2D5E3E", bg: "#D4E6D8", label: t("plan_status_paid") },
+    pending:          { color: "#1A2342", bg: "#D9DDE8", label: t("plan_status_pending") },
+    partial:          { color: "#C9A961", bg: "#F4EBD4", label: t("plan_status_partial") },
+    overdue:          { color: "#B04B3F", bg: "#F3DDD9", label: t("plan_status_overdue") },
+    partial_overdue:  { color: "#B04B3F", bg: "#F3DDD9", label: t("plan_status_partial_overdue") },
+  };
+
+  const mismatch = installments.length > 0 && Math.abs(totals.expected - villaTotal) > 1 && villaTotal > 0;
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <SectionTitle className="mb-0 border-0 pb-0" subtitle={t("sec_payment_plan_sub")}>{t("sec_payment_plan")}</SectionTitle>
+        <div className="flex gap-2">
+          <Button onClick={() => setShowTemplateModal(true)} variant="gold" icon={CalendarDays} size="sm">
+            {t("plan_apply_template")}
+          </Button>
+          <Button onClick={addInstallment} variant="outline" icon={Plus} size="sm">
+            {t("plan_add_installment")}
+          </Button>
+        </div>
+      </div>
+
+      {/* Include in PDF toggle */}
+      <Checkbox label={t("plan_include_in_pdf")} checked={includeInPdf}
+        onChange={v => updatePlan({ includeInPdf: v })} />
+
+      {installments.length === 0 ? (
+        <div className="p-6 text-center text-sm text-[#1A2342]/50 bg-[#FDFBF6] border border-dashed border-[#1A2342]/20"
+          style={{ fontFamily: "'Manrope', sans-serif" }}>
+          {t("plan_no_plan")}
+        </div>
+      ) : (
+        <>
+          {/* Installments table */}
+          <div className="border border-[#1A2342]/10 overflow-x-auto">
+            <div className="min-w-[900px]">
+              <div className="grid grid-cols-24 gap-2 px-3 py-2 bg-[#1A2342]/5 text-[10px] uppercase tracking-[0.12em] text-[#1A2342]/60" style={{ fontFamily: "'Manrope', sans-serif" }}>
+                <div className="col-span-5">{t("plan_concept")}</div>
+                <div className="col-span-3">{t("plan_due_date")}</div>
+                <div className="col-span-3">{t("plan_percentage")}</div>
+                <div className="col-span-4 text-right">{t("plan_amount")}</div>
+                <div className="col-span-3 text-right">{t("plan_paid_amount")}</div>
+                <div className="col-span-4">{t("plan_status")}</div>
+                <div className="col-span-2 text-right"></div>
+              </div>
+              {installments.map((inst, idx) => {
+                const status = getInstallmentStatus(inst);
+                const cfg = STATUS_STYLES[status];
+                return (
+                  <div key={inst.id} className="grid grid-cols-24 gap-2 px-3 py-2 border-t border-[#1A2342]/10 items-center" style={{ fontFamily: "'Manrope', sans-serif" }}>
+                    <div className="col-span-5">
+                      <input value={inst.concept || ""} onChange={e => updateInstallment(inst.id, "concept", e.target.value)}
+                        placeholder={`${lang === "es" ? "Cuota" : "Installment"} ${idx + 1}`}
+                        className="w-full px-2 py-1 bg-transparent border border-[#1A2342]/15 focus:border-[#4A6FA5] focus:outline-none text-sm" />
+                      <input value={inst.conceptEn || ""} onChange={e => updateInstallment(inst.id, "conceptEn", e.target.value)}
+                        placeholder={`${lang === "es" ? "Inglés:" : "English:"} Installment ${idx + 1}`}
+                        className="w-full px-2 py-1 mt-1 bg-transparent border border-[#1A2342]/10 focus:border-[#4A6FA5] focus:outline-none text-[11px] text-[#1A2342]/70" />
+                    </div>
+                    <div className="col-span-3">
+                      <input type="date" value={inst.dueDate || ""} onChange={e => updateInstallment(inst.id, "dueDate", e.target.value)}
+                        className="w-full px-2 py-1 bg-transparent border border-[#1A2342]/15 focus:border-[#4A6FA5] focus:outline-none text-sm" />
+                    </div>
+                    <div className="col-span-3">
+                      <input type="number" step="0.01" value={inst.percentage || 0} onChange={e => updateInstallment(inst.id, "percentage", e.target.value)}
+                        className="w-full px-2 py-1 bg-transparent border border-[#1A2342]/15 focus:border-[#4A6FA5] focus:outline-none text-sm text-right" />
+                    </div>
+                    <div className="col-span-4">
+                      <input type="number" value={inst.amount || 0} onChange={e => updateInstallment(inst.id, "amount", e.target.value)}
+                        className="w-full px-2 py-1 bg-transparent border border-[#1A2342]/15 focus:border-[#4A6FA5] focus:outline-none text-sm text-right font-medium" />
+                    </div>
+                    <div className="col-span-3">
+                      <input type="number" value={inst.paidAmount || 0} onChange={e => updateInstallment(inst.id, "paidAmount", e.target.value)}
+                        className="w-full px-2 py-1 bg-transparent border border-[#1A2342]/15 focus:border-[#4A6FA5] focus:outline-none text-sm text-right" />
+                    </div>
+                    <div className="col-span-4">
+                      <span className="inline-block px-2 py-0.5 text-[10px] uppercase tracking-[0.08em]" style={{ color: cfg.color, backgroundColor: cfg.bg }}>
+                        {cfg.label}
+                      </span>
+                    </div>
+                    <div className="col-span-2 text-right">
+                      <button onClick={() => removeInstallment(inst.id)} className="p-1.5 text-[#1A2342]/40 hover:text-[#B04B3F] hover:bg-[#B04B3F]/10 transition-colors">
+                        <Trash2 className="w-3.5 h-3.5" strokeWidth={1.5} />
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Totals */}
+          <div className="p-4 bg-[#1A2342] text-[#F5F1E8] grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div>
+              <div className="text-[10px] uppercase tracking-[0.2em] text-[#F5F1E8]/60" style={{ fontFamily: "'Manrope', sans-serif" }}>{t("plan_villa_total")}</div>
+              <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: "1.25rem" }}>{fmtUSD(villaTotal)}</div>
+            </div>
+            <div>
+              <div className="text-[10px] uppercase tracking-[0.2em] text-[#F5F1E8]/60" style={{ fontFamily: "'Manrope', sans-serif" }}>{t("plan_total_expected")}</div>
+              <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: "1.25rem" }} className={mismatch ? "text-[#D4A24C]" : ""}>{fmtUSD(totals.expected)}</div>
+            </div>
+            <div>
+              <div className="text-[10px] uppercase tracking-[0.2em] text-[#F5F1E8]/60" style={{ fontFamily: "'Manrope', sans-serif" }}>{t("plan_total_received")}</div>
+              <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: "1.25rem" }} className="text-[#C9A961]">{fmtUSD(totals.received)}</div>
+            </div>
+            <div>
+              <div className="text-[10px] uppercase tracking-[0.2em] text-[#F5F1E8]/60" style={{ fontFamily: "'Manrope', sans-serif" }}>{t("plan_total_pending")}</div>
+              <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: "1.25rem" }}>{fmtUSD(totals.pending)}</div>
+            </div>
+          </div>
+
+          {mismatch && (
+            <div className="p-3 bg-[#F3DDD9] border-l-2 border-[#B04B3F] flex items-start gap-2">
+              <AlertTriangle className="w-4 h-4 text-[#B04B3F] flex-shrink-0 mt-0.5" strokeWidth={1.5} />
+              <div className="text-sm text-[#B04B3F]" style={{ fontFamily: "'Manrope', sans-serif" }}>
+                {t("plan_mismatch_warning")}: {fmtUSD(Math.abs(totals.expected - villaTotal))}
+              </div>
+            </div>
+          )}
+        </>
+      )}
+
+      {/* Template selection modal */}
+      {showTemplateModal && (
+        <TemplateModal villaTotal={villaTotal} onApply={applyTemplate} onClose={() => setShowTemplateModal(false)} />
+      )}
+    </div>
+  );
+}
+
+function TemplateModal({ villaTotal, onApply, onClose }) {
+  const { t, lang } = useT();
+  const [selected, setSelected] = useState("");
+  const [startDate, setStartDate] = useState(todayISO());
+
+  const isES = lang === "es";
+
+  return (
+    <div className="fixed inset-0 bg-[#1A2342]/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <div className="bg-[#F5F1E8] border border-[#1A2342]/15 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+        <div className="px-6 py-4 border-b border-[#1A2342]/10 flex items-center justify-between">
+          <div>
+            <h2 className="text-[#1A2342]" style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: "1.5rem", fontWeight: 500 }}>
+              {t("plan_template_title")}
+            </h2>
+            <p className="text-[11px] text-[#1A2342]/60 mt-0.5" style={{ fontFamily: "'Manrope', sans-serif" }}>
+              {t("plan_template_sub")}
+            </p>
+          </div>
+          <button onClick={onClose} className="p-1.5 hover:bg-[#1A2342]/10 transition-colors">
+            <X className="w-4 h-4 text-[#1A2342]/60" strokeWidth={1.5} />
+          </button>
+        </div>
+
+        <div className="p-6 space-y-2">
+          {PAYMENT_TEMPLATES.map(tpl => {
+            const label = isES ? tpl.labelEs : tpl.labelEn;
+            const desc = isES ? tpl.descEs : tpl.descEn;
+            const active = selected === tpl.id;
+            // Preview of amounts (only for non-custom)
+            let preview = null;
+            if (tpl.id !== "custom" && villaTotal > 0) {
+              const sample = applyPaymentTemplate(tpl.id, villaTotal, todayISO());
+              preview = sample.map(s => fmtUSD(s.amount)).join(" · ");
+            }
+            return (
+              <button key={tpl.id} onClick={() => setSelected(tpl.id)}
+                className={`w-full text-left p-4 border transition-all ${active ? "border-[#1A2342] bg-[#FDFBF6]" : "border-[#1A2342]/15 hover:border-[#1A2342]/40"}`}
+                style={{ fontFamily: "'Manrope', sans-serif" }}>
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex-1">
+                    <div className="text-sm font-medium text-[#1A2342]">{label}</div>
+                    <div className="text-[11px] text-[#1A2342]/60 mt-0.5">{desc}</div>
+                    {preview && <div className="text-[10px] text-[#1A2342]/50 mt-1 font-mono">{preview}</div>}
+                  </div>
+                  {active && <Check className="w-4 h-4 text-[#1A2342] mt-0.5" strokeWidth={2} />}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="px-6 pb-6">
+          <Input label={t("plan_start_date")} type="date" value={startDate} onChange={setStartDate} />
+          <div className="text-[11px] text-[#1A2342]/50 mt-1" style={{ fontFamily: "'Manrope', sans-serif" }}>
+            {t("plan_start_date_help")}
+          </div>
+        </div>
+
+        <div className="px-6 py-4 border-t border-[#1A2342]/10 flex justify-end gap-2">
+          <Button onClick={onClose} variant="ghost">{t("cancel")}</Button>
+          <Button onClick={() => selected && onApply(selected, startDate)} variant="primary" disabled={!selected} icon={Check}>
+            {t("plan_apply")}
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
 
 function DocumentsSection({ clientId, documents, onDocumentsChange }) {
   const { t } = useT();
@@ -1718,14 +2188,15 @@ function ClientForm({ initial, onSave, onCancel }) {
   const update = (patch) => setData(d => ({ ...d, ...patch, updatedAt: new Date().toISOString() }));
 
   const tabs = [
-    { v: "type",       l: t("tab_type"),       icon: UserCircle },
-    { v: "personal",   l: t("tab_personal"),   icon: FileText },
-    { v: "villa",      l: t("tab_villa"),      icon: Home },
-    { v: "aml",        l: t("tab_aml"),        icon: Shield },
-    { v: "payments",   l: t("tab_payments"),   icon: CreditCard },
-    { v: "commission", l: t("sec_commission"), icon: Briefcase },
-    { v: "documents",  l: t("tab_documents"),  icon: Paperclip },
-    { v: "notes",      l: t("tab_notes"),      icon: ClipboardList },
+    { v: "type",         l: t("tab_type"),         icon: UserCircle },
+    { v: "personal",     l: t("tab_personal"),     icon: FileText },
+    { v: "villa",        l: t("tab_villa"),        icon: Home },
+    { v: "aml",          l: t("tab_aml"),          icon: Shield },
+    { v: "payment_plan", l: t("tab_payment_plan"), icon: CalendarDays },
+    { v: "payments",     l: t("tab_payments"),     icon: CreditCard },
+    { v: "commission",   l: t("sec_commission"),   icon: Briefcase },
+    { v: "documents",    l: t("tab_documents"),    icon: Paperclip },
+    { v: "notes",        l: t("tab_notes"),        icon: ClipboardList },
   ];
 
   const pricing = computePrice(data, settings);
@@ -1753,7 +2224,24 @@ function ClientForm({ initial, onSave, onCancel }) {
       setTab("personal");
       return;
     }
-    onSave(data);
+    // Sync installment paidAmount from linked payments
+    let finalData = data;
+    if (data.paymentPlan && data.paymentPlan.installments && data.paymentPlan.installments.length > 0) {
+      const syncedInstallments = data.paymentPlan.installments.map(inst => {
+        const linkedPayments = (data.payments || []).filter(p => p.linkedInstallmentId === inst.id);
+        const paidForThis = linkedPayments.reduce((s, p) => s + (Number(p.amount) || 0), 0);
+        return {
+          ...inst,
+          paidAmount: paidForThis,
+          linkedPaymentIds: linkedPayments.map(p => p.id),
+        };
+      });
+      finalData = {
+        ...data,
+        paymentPlan: { ...data.paymentPlan, installments: syncedInstallments },
+      };
+    }
+    onSave(finalData);
   };
 
   return (
@@ -2001,6 +2489,16 @@ function ClientForm({ initial, onSave, onCancel }) {
         </div>
       )}
 
+      {/* Tab: Payment Plan */}
+      {tab === "payment_plan" && (
+        <PaymentPlanSection
+          clientId={data.id}
+          villaTotal={pricing.total}
+          plan={data.paymentPlan}
+          onPlanChange={newPlan => update({ paymentPlan: newPlan })}
+        />
+      )}
+
       {/* Tab: Payments */}
       {tab === "payments" && (
         <div className="space-y-6">
@@ -2023,21 +2521,43 @@ function ClientForm({ initial, onSave, onCancel }) {
                 {t("lbl_no_payments")}
               </div>
             ) : (
-              data.payments.map(p => (
-                <div key={p.id} className="grid grid-cols-12 gap-2 items-end p-3 bg-[#FDFBF6] border border-[#1A2342]/10">
-                  <Input label={t("pay_date")} type="date" value={p.date} onChange={v => updatePayment(p.id, { date: v })} className="col-span-2" />
-                  <Input label={t("pay_amount")} type="number" value={p.amount} onChange={v => updatePayment(p.id, { amount: v })} className="col-span-2" />
-                  <Select label={t("pay_type")} value={p.type} onChange={v => updatePayment(p.id, { type: v })}
-                    options={[{v:"deposit",l:t("pay_type_deposit")},{v:"installment",l:t("pay_type_installment")},{v:"final",l:t("pay_type_final")}]}
-                    className="col-span-2" />
-                  <Select label={t("pay_method")} value={p.method} onChange={v => updatePayment(p.id, { method: v })} options={PAYMENT_METHODS} className="col-span-2" />
-                  <Input label={t("pay_reference")} value={p.reference} onChange={v => updatePayment(p.id, { reference: v })} className="col-span-3" placeholder={t("pay_reference_ph")} />
-                  <button type="button" onClick={() => removePayment(p.id)}
-                    className="col-span-1 h-[34px] text-[#B04B3F] hover:bg-[#B04B3F]/10 flex items-center justify-center">
-                    <Trash2 className="w-4 h-4" strokeWidth={1.5} />
-                  </button>
+              data.payments.map(p => {
+                const planInstallments = data.paymentPlan?.installments || [];
+                return (
+                <div key={p.id} className="p-3 bg-[#FDFBF6] border border-[#1A2342]/10 space-y-2">
+                  <div className="grid grid-cols-12 gap-2 items-end">
+                    <Input label={t("pay_date")} type="date" value={p.date} onChange={v => updatePayment(p.id, { date: v })} className="col-span-2" />
+                    <Input label={t("pay_amount")} type="number" value={p.amount} onChange={v => updatePayment(p.id, { amount: v })} className="col-span-2" />
+                    <Select label={t("pay_type")} value={p.type} onChange={v => updatePayment(p.id, { type: v })}
+                      options={[{v:"deposit",l:t("pay_type_deposit")},{v:"installment",l:t("pay_type_installment")},{v:"final",l:t("pay_type_final")}]}
+                      className="col-span-2" />
+                    <Select label={t("pay_method")} value={p.method} onChange={v => updatePayment(p.id, { method: v })} options={PAYMENT_METHODS} className="col-span-2" />
+                    <Input label={t("pay_reference")} value={p.reference} onChange={v => updatePayment(p.id, { reference: v })} className="col-span-3" placeholder={t("pay_reference_ph")} />
+                    <button type="button" onClick={() => removePayment(p.id)}
+                      className="col-span-1 h-[34px] text-[#B04B3F] hover:bg-[#B04B3F]/10 flex items-center justify-center">
+                      <Trash2 className="w-4 h-4" strokeWidth={1.5} />
+                    </button>
+                  </div>
+                  {planInstallments.length > 0 && (
+                    <div className="grid grid-cols-12 gap-2">
+                      <Select
+                        label={lang === "es" ? "Vincular a cuota del plan (opcional)" : "Link to plan installment (optional)"}
+                        value={p.linkedInstallmentId || ""}
+                        onChange={v => updatePayment(p.id, { linkedInstallmentId: v || null })}
+                        options={[
+                          { v: "", l: lang === "es" ? "— Sin vincular —" : "— Not linked —" },
+                          ...planInstallments.map((inst, idx) => ({
+                            v: inst.id,
+                            l: `${idx + 1}. ${inst.concept || (lang === "es" ? `Cuota ${idx + 1}` : `Installment ${idx + 1}`)} — ${fmtUSD(inst.amount)}${inst.dueDate ? ` (${inst.dueDate})` : ""}`
+                          }))
+                        ]}
+                        className="col-span-12"
+                      />
+                    </div>
+                  )}
                 </div>
-              ))
+                );
+              })
             )}
           </div>
 
@@ -2370,6 +2890,71 @@ function ClientDetail({ client, onEdit, onClose, onDelete, onGeneratePayment }) 
         </div>
       )}
 
+      {/* Payment Plan — read-only view */}
+      {client.paymentPlan && client.paymentPlan.installments && client.paymentPlan.installments.length > 0 && (() => {
+        const planTotals = computePlanTotals(client.paymentPlan);
+        const STATUS_STYLES = {
+          paid:             { color: "#2D5E3E", bg: "#D4E6D8", label: t("plan_status_paid") },
+          pending:          { color: "#1A2342", bg: "#D9DDE8", label: t("plan_status_pending") },
+          partial:          { color: "#C9A961", bg: "#F4EBD4", label: t("plan_status_partial") },
+          overdue:          { color: "#B04B3F", bg: "#F3DDD9", label: t("plan_status_overdue") },
+          partial_overdue:  { color: "#B04B3F", bg: "#F3DDD9", label: t("plan_status_partial_overdue") },
+        };
+        return (
+          <div>
+            <SectionTitle>{t("sec_payment_plan")}</SectionTitle>
+            <div className="border border-[#1A2342]/10 overflow-x-auto">
+              <div className="min-w-[700px]">
+                <div className="grid grid-cols-12 gap-2 px-3 py-2 bg-[#1A2342]/5 text-[10px] uppercase tracking-[0.12em] text-[#1A2342]/60" style={{ fontFamily: "'Manrope', sans-serif" }}>
+                  <div className="col-span-1">#</div>
+                  <div className="col-span-4">{t("plan_concept")}</div>
+                  <div className="col-span-2">{t("plan_due_date")}</div>
+                  <div className="col-span-2 text-right">{t("plan_amount")}</div>
+                  <div className="col-span-2 text-right">{t("plan_paid_amount")}</div>
+                  <div className="col-span-1">{t("plan_status")}</div>
+                </div>
+                {client.paymentPlan.installments.map((inst, idx) => {
+                  const status = getInstallmentStatus(inst);
+                  const cfg = STATUS_STYLES[status];
+                  return (
+                    <div key={inst.id} className="grid grid-cols-12 gap-2 px-3 py-2 border-t border-[#1A2342]/10 items-center text-sm" style={{ fontFamily: "'Manrope', sans-serif" }}>
+                      <div className="col-span-1 text-[#1A2342]/60">{idx + 1}</div>
+                      <div className="col-span-4 text-[#1A2342]">{inst.concept || `Cuota ${idx + 1}`}</div>
+                      <div className="col-span-2 text-[#1A2342]/70">{inst.dueDate ? fmtDate(inst.dueDate) : "—"}</div>
+                      <div className="col-span-2 text-right text-[#1A2342] font-medium">{fmtUSD(inst.amount)}</div>
+                      <div className="col-span-2 text-right text-[#1A2342]/70">{fmtUSD(inst.paidAmount)}</div>
+                      <div className="col-span-1">
+                        <span className="inline-block px-1.5 py-0.5 text-[9px] uppercase tracking-[0.08em]" style={{ color: cfg.color, backgroundColor: cfg.bg }}>
+                          {cfg.label}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-0 border border-[#1A2342]/15 mt-3">
+              <div className="p-3 border-r border-b md:border-b-0 border-[#1A2342]/15">
+                <div className="text-[10px] uppercase tracking-[0.15em] text-[#1A2342]/50" style={{ fontFamily: "'Manrope', sans-serif" }}>{t("plan_total_expected")}</div>
+                <div className="text-[#1A2342]" style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: "1.1rem" }}>{fmtUSD(planTotals.expected)}</div>
+              </div>
+              <div className="p-3 md:border-r border-b md:border-b-0 border-[#1A2342]/15">
+                <div className="text-[10px] uppercase tracking-[0.15em] text-[#1A2342]/50" style={{ fontFamily: "'Manrope', sans-serif" }}>{t("plan_total_received")}</div>
+                <div className="text-[#C9A961]" style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: "1.1rem" }}>{fmtUSD(planTotals.received)}</div>
+              </div>
+              <div className="p-3 border-r border-[#1A2342]/15">
+                <div className="text-[10px] uppercase tracking-[0.15em] text-[#1A2342]/50" style={{ fontFamily: "'Manrope', sans-serif" }}>{t("plan_total_pending")}</div>
+                <div className="text-[#1A2342]" style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: "1.1rem" }}>{fmtUSD(planTotals.pending)}</div>
+              </div>
+              <div className="p-3">
+                <div className="text-[10px] uppercase tracking-[0.15em] text-[#1A2342]/50" style={{ fontFamily: "'Manrope', sans-serif" }}>{lang === "es" ? "Cuotas Pagadas" : "Installments Paid"}</div>
+                <div className="text-[#1A2342]" style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: "1.1rem" }}>{planTotals.paidCount}/{planTotals.count}</div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
       {/* Broker Commission — internal view */}
       {client.brokerName && (() => {
         const c = computeCommission(client, settings);
@@ -2477,14 +3062,29 @@ function Dashboard({ clients, onNewClient, onExport, onGoToClients, onGoToVillas
     const soldLots = new Set(clients.filter(c => c.lotNumber && c.status !== "cancelled").map(c => String(c.lotNumber)));
     // Commission totals
     let totalCommissions = 0, earnedCommissions = 0, pendingCommissions = 0;
+    // Installment alerts across all active clients
+    let totalOverdue = 0, totalUpcoming = 0;
+    const overdueClients = [], upcomingClients = [];
     clients.forEach(c => {
-      if (!c.brokerName) return;
-      const comm = computeCommission(c, settings);
-      totalCommissions += comm.totalCommission;
-      earnedCommissions += comm.earnedByBroker;
-      pendingCommissions += comm.pendingToBroker;
+      if (c.brokerName) {
+        const comm = computeCommission(c, settings);
+        totalCommissions += comm.totalCommission;
+        earnedCommissions += comm.earnedByBroker;
+        pendingCommissions += comm.pendingToBroker;
+      }
+      if (c.paymentPlan && !["cancelled","completed"].includes(c.status)) {
+        const pt = computePlanTotals(c.paymentPlan);
+        if (pt.overdueCount > 0) {
+          totalOverdue += pt.overdueCount;
+          overdueClients.push({ id: c.id, name: c.fullName || c.companyName, count: pt.overdueCount });
+        }
+        if (pt.upcomingCount > 0) {
+          totalUpcoming += pt.upcomingCount;
+          upcomingClients.push({ id: c.id, name: c.fullName || c.companyName, count: pt.upcomingCount });
+        }
+      }
     });
-    return { totalRevenue, totalPaid, active, byStatus, soldLots: soldLots.size, availableLots: totalLots - soldLots.size, totalCommissions, earnedCommissions, pendingCommissions };
+    return { totalRevenue, totalPaid, active, byStatus, soldLots: soldLots.size, availableLots: totalLots - soldLots.size, totalCommissions, earnedCommissions, pendingCommissions, totalOverdue, totalUpcoming, overdueClients, upcomingClients };
   }, [clients, settings, totalLots]);
 
   const recentClients = useMemo(() => [...clients].sort((a, b) => (b.updatedAt || b.createdAt || "").localeCompare(a.updatedAt || a.createdAt || "")).slice(0, 5), [clients]);
@@ -2520,6 +3120,42 @@ function Dashboard({ clients, onNewClient, onExport, onGoToClients, onGoToVillas
           </div>
         ))}
       </div>
+
+      {/* Installment Alerts — shown only if there are overdue or upcoming */}
+      {(stats.totalOverdue > 0 || stats.totalUpcoming > 0) && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          {stats.totalOverdue > 0 && (
+            <button onClick={onGoToClients}
+              className="p-4 bg-[#F3DDD9] border-l-4 border-[#B04B3F] flex items-start gap-3 text-left hover:bg-[#EECFC8] transition-colors">
+              <AlertTriangle className="w-5 h-5 text-[#B04B3F] flex-shrink-0 mt-0.5" strokeWidth={1.5} />
+              <div className="flex-1">
+                <div className="text-sm font-semibold text-[#B04B3F]" style={{ fontFamily: "'Manrope', sans-serif" }}>
+                  {stats.totalOverdue} {t("alert_overdue_installments")}
+                </div>
+                <div className="text-[11px] text-[#1A2342]/70 mt-0.5" style={{ fontFamily: "'Manrope', sans-serif" }}>
+                  {stats.overdueClients.slice(0, 3).map(c => c.name).join(" · ")}
+                  {stats.overdueClients.length > 3 ? ` · +${stats.overdueClients.length - 3}` : ""}
+                </div>
+              </div>
+            </button>
+          )}
+          {stats.totalUpcoming > 0 && (
+            <button onClick={onGoToClients}
+              className="p-4 bg-[#F4EBD4] border-l-4 border-[#C9A961] flex items-start gap-3 text-left hover:bg-[#EEE2C2] transition-colors">
+              <Clock className="w-5 h-5 text-[#C9A961] flex-shrink-0 mt-0.5" strokeWidth={1.5} />
+              <div className="flex-1">
+                <div className="text-sm font-semibold text-[#8B7430]" style={{ fontFamily: "'Manrope', sans-serif" }}>
+                  {stats.totalUpcoming} {t("alert_upcoming_installments")}
+                </div>
+                <div className="text-[11px] text-[#1A2342]/70 mt-0.5" style={{ fontFamily: "'Manrope', sans-serif" }}>
+                  {stats.upcomingClients.slice(0, 3).map(c => c.name).join(" · ")}
+                  {stats.upcomingClients.length > 3 ? ` · +${stats.upcomingClients.length - 3}` : ""}
+                </div>
+              </div>
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Commissions Summary — shown only if there are brokers */}
       {stats.totalCommissions > 0 && (
@@ -3549,6 +4185,72 @@ function PaymentInstructionModal({ client, settings, onClose }) {
               </ol>
             </div>
           </div>
+
+          {/* Payment Schedule (bilingual, if plan exists and enabled) */}
+          {client.paymentPlan && client.paymentPlan.installments && client.paymentPlan.installments.length > 0 && client.paymentPlan.includeInPdf !== false && (
+            <div className="pdf-section" style={{ marginBottom: "20pt" }}>
+              <div className="grid grid-cols-2 gap-8 mb-3">
+                <div style={{ fontSize: "7pt", letterSpacing: "0.2em", textTransform: "uppercase", color: "#1A2342", opacity: 0.6, borderBottom: "1px solid rgba(26,35,66,0.2)", paddingBottom: "4pt" }}>
+                  Cronograma de Pagos
+                </div>
+                <div style={{ fontSize: "7pt", letterSpacing: "0.2em", textTransform: "uppercase", color: "#1A2342", opacity: 0.6, borderBottom: "1px solid rgba(26,35,66,0.2)", paddingBottom: "4pt" }}>
+                  Payment Schedule
+                </div>
+              </div>
+              <table style={{ width: "100%", fontSize: "8.5pt", lineHeight: 1.5, borderCollapse: "collapse" }}>
+                <thead>
+                  <tr style={{ backgroundColor: "#F5F1E8" }}>
+                    <th style={{ padding: "6pt 8pt", textAlign: "left", fontWeight: 600, fontSize: "7pt", letterSpacing: "0.08em", textTransform: "uppercase", color: "#1A2342", opacity: 0.7, borderBottom: "1px solid rgba(26,35,66,0.2)" }}>#</th>
+                    <th style={{ padding: "6pt 8pt", textAlign: "left", fontWeight: 600, fontSize: "7pt", letterSpacing: "0.08em", textTransform: "uppercase", color: "#1A2342", opacity: 0.7, borderBottom: "1px solid rgba(26,35,66,0.2)" }}>Concepto / Concept</th>
+                    <th style={{ padding: "6pt 8pt", textAlign: "left", fontWeight: 600, fontSize: "7pt", letterSpacing: "0.08em", textTransform: "uppercase", color: "#1A2342", opacity: 0.7, borderBottom: "1px solid rgba(26,35,66,0.2)" }}>Fecha / Date</th>
+                    <th style={{ padding: "6pt 8pt", textAlign: "right", fontWeight: 600, fontSize: "7pt", letterSpacing: "0.08em", textTransform: "uppercase", color: "#1A2342", opacity: 0.7, borderBottom: "1px solid rgba(26,35,66,0.2)" }}>Monto / Amount</th>
+                    <th style={{ padding: "6pt 8pt", textAlign: "center", fontWeight: 600, fontSize: "7pt", letterSpacing: "0.08em", textTransform: "uppercase", color: "#1A2342", opacity: 0.7, borderBottom: "1px solid rgba(26,35,66,0.2)" }}>Estado / Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {client.paymentPlan.installments.map((inst, idx) => {
+                    const status = getInstallmentStatus(inst);
+                    const isCurrent = Math.abs(Number(amount) - Number(inst.amount)) < 1 && status !== "paid";
+                    const statusMap = {
+                      paid:            { label: "Pagada / Paid",        color: "#2D5E3E" },
+                      pending:         { label: "Pendiente / Pending",  color: "#1A2342" },
+                      partial:         { label: "Parcial / Partial",    color: "#C9A961" },
+                      overdue:         { label: "Vencida / Overdue",    color: "#B04B3F" },
+                      partial_overdue: { label: "Parcial Venc. / Partial Overdue", color: "#B04B3F" },
+                    };
+                    const sMap = statusMap[status] || statusMap.pending;
+                    return (
+                      <tr key={inst.id} style={{ borderBottom: "1px solid rgba(26,35,66,0.08)", backgroundColor: isCurrent ? "#F4EBD4" : "transparent" }}>
+                        <td style={{ padding: "6pt 8pt", fontWeight: 500 }}>{idx + 1}{isCurrent ? " ⬅" : ""}</td>
+                        <td style={{ padding: "6pt 8pt" }}>
+                          <div>{inst.concept || `Cuota ${idx + 1}`}</div>
+                          {inst.conceptEn && <div style={{ fontSize: "7.5pt", color: "rgba(26,35,66,0.6)" }}>{inst.conceptEn}</div>}
+                        </td>
+                        <td style={{ padding: "6pt 8pt" }}>
+                          {inst.dueDate ? new Date(inst.dueDate).toLocaleDateString("es-DO", { year: "numeric", month: "short", day: "numeric" }) : "—"}
+                        </td>
+                        <td style={{ padding: "6pt 8pt", textAlign: "right", fontWeight: 500 }}>
+                          {fmtUSD(inst.amount)}
+                        </td>
+                        <td style={{ padding: "6pt 8pt", textAlign: "center" }}>
+                          <span style={{ color: sMap.color, fontSize: "7.5pt", fontWeight: 500 }}>{sMap.label}</span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+                <tfoot>
+                  <tr style={{ backgroundColor: "#1A2342", color: "#F5F1E8" }}>
+                    <td colSpan="3" style={{ padding: "8pt", fontSize: "8pt", letterSpacing: "0.1em", textTransform: "uppercase" }}>TOTAL</td>
+                    <td style={{ padding: "8pt", textAlign: "right", fontWeight: 600, fontSize: "10pt" }}>
+                      {fmtUSD(client.paymentPlan.installments.reduce((s, i) => s + (Number(i.amount) || 0), 0))}
+                    </td>
+                    <td></td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          )}
 
           {/* Notes */}
           {notes && (
