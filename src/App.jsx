@@ -519,6 +519,43 @@ const TRANSLATIONS = {
     pi_register_yes: "Sí, registrar",
     pi_register_no: "No, solo imprimir",
     pi_registered: "Pago pendiente registrado y vinculado a la cuota",
+    // Email & WhatsApp sending
+    pi_send: "Enviar",
+    pi_send_email: "Enviar por Email",
+    pi_send_whatsapp: "Enviar por WhatsApp",
+    pi_send_email_missing: "Este cliente no tiene email registrado. Agrégalo en la ficha antes de enviar.",
+    pi_send_phone_missing: "Este cliente no tiene teléfono registrado. Agrégalo en la ficha antes de enviar.",
+    pi_send_phone_invalid: "El teléfono registrado no parece válido. Revísalo en la ficha del cliente.",
+    pi_pdf_downloaded: "PDF descargado. Adjúntalo al correo/mensaje antes de enviar.",
+    pi_email_subject: "Instructivo de Pago AMBAR",
+    pi_email_greeting_es: "Estimado/a",
+    pi_email_greeting_en: "Dear",
+    pi_email_body_intro_es: "Adjunto encontrará el instructivo de pago para su villa en AMBAR Longevity Estate.",
+    pi_email_body_intro_en: "Please find attached the payment instruction for your villa at AMBAR Longevity Estate.",
+    pi_email_body_ref_es: "Referencia",
+    pi_email_body_amount_es: "Monto",
+    pi_email_body_due_es: "Vencimiento",
+    pi_email_body_concept_es: "Concepto",
+    pi_email_body_note_es: "Por favor incluya la referencia exacta en el concepto del wire. Todas las comisiones bancarias son por cuenta del remitente (OUR). Envíe el comprobante a",
+    pi_email_body_note_en: "Please include the exact reference in the wire memo. All bank fees are on the sender's account (OUR). Send the wire confirmation to",
+    pi_email_body_closing_es: "Cordialmente,",
+    pi_email_body_closing_en: "Sincerely,",
+    pi_email_body_team_es: "Equipo AMBAR Longevity Estate",
+    pi_email_body_team_en: "AMBAR Longevity Estate Team",
+    pi_wa_greeting_es: "Hola",
+    pi_wa_greeting_en: "Hello",
+    pi_wa_body_es: "le envío el instructivo de pago AMBAR",
+    pi_wa_body_en: "here is your AMBAR payment instruction",
+    pi_wa_ref: "Ref",
+    pi_wa_amount_es: "Monto",
+    pi_wa_amount_en: "Amount",
+    pi_wa_expires_es: "Vence",
+    pi_wa_expires_en: "Expires",
+    pi_wa_footer_es: "Por favor adjunte el comprobante del wire a",
+    pi_wa_footer_en: "Please send the wire receipt to",
+    pi_wa_footer_tail_es: "después de transferir.",
+    pi_wa_footer_tail_en: "after transferring.",
+    pi_send_help: "Se descargará el PDF y se abrirá la aplicación correspondiente con el mensaje prellenado. Solo adjunta el PDF y envía.",
   },
   en: {
     // Brand
@@ -957,6 +994,43 @@ const TRANSLATIONS = {
     pi_register_yes: "Yes, register",
     pi_register_no: "No, only print",
     pi_registered: "Pending payment registered and linked to installment",
+    // Email & WhatsApp sending
+    pi_send: "Send",
+    pi_send_email: "Send via Email",
+    pi_send_whatsapp: "Send via WhatsApp",
+    pi_send_email_missing: "This client has no email. Add it to the client file before sending.",
+    pi_send_phone_missing: "This client has no phone. Add it to the client file before sending.",
+    pi_send_phone_invalid: "The registered phone does not look valid. Check it on the client file.",
+    pi_pdf_downloaded: "PDF downloaded. Attach it to the email/message before sending.",
+    pi_email_subject: "AMBAR Payment Instruction",
+    pi_email_greeting_es: "Estimado/a",
+    pi_email_greeting_en: "Dear",
+    pi_email_body_intro_es: "Adjunto encontrará el instructivo de pago para su villa en AMBAR Longevity Estate.",
+    pi_email_body_intro_en: "Please find attached the payment instruction for your villa at AMBAR Longevity Estate.",
+    pi_email_body_ref_es: "Referencia",
+    pi_email_body_amount_es: "Monto",
+    pi_email_body_due_es: "Vencimiento",
+    pi_email_body_concept_es: "Concepto",
+    pi_email_body_note_es: "Por favor incluya la referencia exacta en el concepto del wire. Todas las comisiones bancarias son por cuenta del remitente (OUR). Envíe el comprobante a",
+    pi_email_body_note_en: "Please include the exact reference in the wire memo. All bank fees are on the sender's account (OUR). Send the wire confirmation to",
+    pi_email_body_closing_es: "Cordialmente,",
+    pi_email_body_closing_en: "Sincerely,",
+    pi_email_body_team_es: "Equipo AMBAR Longevity Estate",
+    pi_email_body_team_en: "AMBAR Longevity Estate Team",
+    pi_wa_greeting_es: "Hola",
+    pi_wa_greeting_en: "Hello",
+    pi_wa_body_es: "le envío el instructivo de pago AMBAR",
+    pi_wa_body_en: "here is your AMBAR payment instruction",
+    pi_wa_ref: "Ref",
+    pi_wa_amount_es: "Monto",
+    pi_wa_amount_en: "Amount",
+    pi_wa_expires_es: "Vence",
+    pi_wa_expires_en: "Expires",
+    pi_wa_footer_es: "Por favor adjunte el comprobante del wire a",
+    pi_wa_footer_en: "Please send the wire receipt to",
+    pi_wa_footer_tail_es: "después de transferir.",
+    pi_wa_footer_tail_en: "after transferring.",
+    pi_send_help: "The PDF will download and the corresponding app will open with the message pre-filled. Just attach the PDF and send.",
   },
 };
 
@@ -981,6 +1055,37 @@ const fmtDate = (d) => {
     const dt = typeof d === "string" ? new Date(d) : d;
     return dt.toLocaleDateString("es-DO", { year: "numeric", month: "short", day: "numeric" });
   } catch { return "—"; }
+};
+
+// Format phone number for WhatsApp (returns digits-only with country code, or null if invalid)
+// Examples:
+//  "+1 809 555 1234" -> "18095551234"
+//  "809-555-1234"    -> "18095551234"
+//  "(829) 555 1234"  -> "18295551234"
+//  "+34 611 22 33 44"-> "34611223344"
+//  "123"             -> null (too short)
+const formatPhoneForWhatsApp = (phone) => {
+  if (!phone) return null;
+  const raw = String(phone).trim();
+  // If starts with +, strip it and keep the rest
+  if (raw.startsWith("+")) {
+    const digits = raw.slice(1).replace(/\D/g, "");
+    return digits.length >= 10 ? digits : null;
+  }
+  // Otherwise strip all non-digits
+  const digits = raw.replace(/\D/g, "");
+  if (digits.length < 10) return null;
+  // 10 digits → assume DR, prepend +1
+  if (digits.length === 10) {
+    // DR area codes start with 8 or 9 typically; even if not, we default to DR
+    return "1" + digits;
+  }
+  // 11 digits starting with 1 → already US/DR format
+  if (digits.length === 11 && digits.startsWith("1")) {
+    return digits;
+  }
+  // Longer numbers → assume they already have country code
+  return digits;
 };
 
 const todayISO = () => new Date().toISOString().slice(0, 10);
@@ -4052,17 +4157,132 @@ function PaymentInstructionModal({ client, settings, onClose, onSaveClient }) {
     }
   };
 
+  // Build email body (plain text, bilingual always for safety)
+  const buildEmailBody = () => {
+    const issueDateStr = issueDate.toLocaleDateString("es-DO", { year: "numeric", month: "long", day: "numeric" });
+    const validUntilStr = validUntil.toLocaleDateString("es-DO", { year: "numeric", month: "long", day: "numeric" });
+
+    const bodyEs = [
+      `${t("pi_email_greeting_es")} ${clientName || ""},`,
+      "",
+      t("pi_email_body_intro_es"),
+      "",
+      `  ${t("pi_email_body_ref_es")}: ${reference}`,
+      `  ${t("pi_email_body_amount_es")}: ${fmtUSD(amount)} USD`,
+      `  ${t("pi_email_body_due_es")}: ${validUntilStr}`,
+      `  ${t("pi_email_body_concept_es")}: ${finalConcept}`,
+      "",
+      `${t("pi_email_body_note_es")} ${settings.payments.remittanceEmail || "payments@ambarestate.do"} inmediatamente después de ejecutar la transferencia.`,
+      "",
+      t("pi_email_body_closing_es"),
+      t("pi_email_body_team_es"),
+      settings.company.email || "sales@ambarestate.do",
+    ].join("\n");
+
+    const bodyEn = [
+      "",
+      "— — —",
+      "",
+      `${t("pi_email_greeting_en")} ${clientName || ""},`,
+      "",
+      t("pi_email_body_intro_en"),
+      "",
+      `  Reference: ${reference}`,
+      `  Amount: ${fmtUSD(amount)} USD`,
+      `  Due date: ${validUntilStr}`,
+      `  Concept: ${finalConcept}`,
+      "",
+      `${t("pi_email_body_note_en")} ${settings.payments.remittanceEmail || "payments@ambarestate.do"} immediately after the transfer.`,
+      "",
+      t("pi_email_body_closing_en"),
+      t("pi_email_body_team_en"),
+      settings.company.email || "sales@ambarestate.do",
+    ].join("\n");
+
+    return bodyEs + bodyEn;
+  };
+
+  // Build WhatsApp body (plain text, bilingual compact)
+  const buildWhatsAppBody = () => {
+    const firstName = (clientName || "").split(" ")[0] || "";
+    const validUntilStr = validUntil.toLocaleDateString("es-DO", { year: "numeric", month: "long", day: "numeric" });
+
+    const lines = [
+      `${t("pi_wa_greeting_es")} ${firstName}, ${t("pi_wa_body_es")}.`,
+      "",
+      `${t("pi_wa_ref")}: ${reference}`,
+      `${t("pi_wa_amount_es")}: ${fmtUSD(amount)} USD`,
+      `${t("pi_wa_expires_es")}: ${validUntilStr}`,
+      "",
+      `${t("pi_wa_footer_es")} ${settings.payments.remittanceEmail || "payments@ambarestate.do"} ${t("pi_wa_footer_tail_es")}`,
+      "",
+      "— — —",
+      "",
+      `${t("pi_wa_greeting_en")} ${firstName}, ${t("pi_wa_body_en")}.`,
+      "",
+      `${t("pi_wa_ref")}: ${reference}`,
+      `${t("pi_wa_amount_en")}: ${fmtUSD(amount)} USD`,
+      `${t("pi_wa_expires_en")}: ${validUntilStr}`,
+      "",
+      `${t("pi_wa_footer_en")} ${settings.payments.remittanceEmail || "payments@ambarestate.do"} ${t("pi_wa_footer_tail_en")}`,
+    ];
+    return lines.join("\n");
+  };
+
+  const handleSendEmail = () => {
+    if (!client.email) {
+      alert(t("pi_send_email_missing"));
+      return;
+    }
+    // First: trigger print so user saves the PDF for attachment
+    handlePrint();
+    // Then: open mailto after a brief delay so print dialog appears first
+    setTimeout(() => {
+      const subject = `${t("pi_email_subject")} — ${reference}`;
+      const body = buildEmailBody();
+      const mailto = `mailto:${encodeURIComponent(client.email)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+      window.location.href = mailto;
+    }, 800);
+  };
+
+  const handleSendWhatsApp = () => {
+    if (!client.phone) {
+      alert(t("pi_send_phone_missing"));
+      return;
+    }
+    const formatted = formatPhoneForWhatsApp(client.phone);
+    if (!formatted) {
+      alert(t("pi_send_phone_invalid"));
+      return;
+    }
+    // First: trigger print so user saves the PDF for attachment
+    handlePrint();
+    // Then: open WhatsApp with pre-filled message
+    setTimeout(() => {
+      const body = buildWhatsAppBody();
+      const waUrl = `https://wa.me/${formatted}?text=${encodeURIComponent(body)}`;
+      window.open(waUrl, "_blank");
+    }, 800);
+  };
+
   const canPreview = finalConcept && Number(amount) > 0;
 
   if (mode === "preview") {
     return (
       <div className="print-instruction">
         {/* Non-print controls */}
-        <div className="no-print flex items-center justify-between mb-6 pb-4 border-b border-[#1A2342]/10">
-          <Button onClick={() => setMode("form")} variant="ghost" icon={ArrowLeft}>{t("edit")}</Button>
-          <div className="flex gap-2">
-            <Button onClick={handlePrint} variant="primary" icon={Printer}>{t("print_pdf")}</Button>
-            <Button onClick={onClose} variant="outline" icon={X}>{t("close")}</Button>
+        <div className="no-print mb-6 pb-4 border-b border-[#1A2342]/10 space-y-3">
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <Button onClick={() => setMode("form")} variant="ghost" icon={ArrowLeft}>{t("edit")}</Button>
+            <div className="flex gap-2 flex-wrap">
+              <Button onClick={handlePrint} variant="primary" icon={Printer}>{t("print_pdf")}</Button>
+              <Button onClick={handleSendEmail} variant="outline" icon={Mail} disabled={!client.email}>{t("pi_send_email")}</Button>
+              <Button onClick={handleSendWhatsApp} variant="outline" icon={Phone} disabled={!client.phone}>{t("pi_send_whatsapp")}</Button>
+              <Button onClick={onClose} variant="ghost" icon={X}>{t("close")}</Button>
+            </div>
+          </div>
+          <div className="text-[11px] text-[#1A2342]/50" style={{ fontFamily: "'Manrope', sans-serif" }}>
+            {t("pi_send_help")}
           </div>
         </div>
 
