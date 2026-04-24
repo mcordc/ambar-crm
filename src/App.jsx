@@ -501,6 +501,24 @@ const TRANSLATIONS = {
     pdf_payment_schedule_en: "Payment Schedule",
     pdf_current_payment: "ESTA CUOTA",
     pdf_current_payment_en: "THIS PAYMENT",
+    // Payment instruction ↔ plan integration
+    pi_select_installment: "Cuota del Plan",
+    pi_select_installment_help: "Selecciona una cuota del plan de pagos para autocompletar los datos",
+    pi_select_installment_ph: "— Seleccionar cuota —",
+    pi_no_pending: "No hay cuotas pendientes en el plan",
+    pi_linked_to: "Vinculado a Cuota",
+    pi_unlock_amount: "Monto Diferente",
+    pi_unlock_warning: "El monto fue modificado manualmente. Asegúrate de que esto sea correcto.",
+    pi_relock: "Restaurar",
+    pi_free_mode: "Instructivo Libre",
+    pi_free_mode_note: "Este cliente no tiene plan de pagos. Puedes crear un instructivo con cualquier monto.",
+    pi_plan_balance: "Balance pendiente",
+    pi_inst_paid_already: "Ya pagado de esta cuota",
+    // Post-print registration
+    pi_register_payment: "¿Registrar este instructivo como pago pendiente en el cliente?",
+    pi_register_yes: "Sí, registrar",
+    pi_register_no: "No, solo imprimir",
+    pi_registered: "Pago pendiente registrado y vinculado a la cuota",
   },
   en: {
     // Brand
@@ -921,6 +939,24 @@ const TRANSLATIONS = {
     pdf_payment_schedule_en: "Cronograma de Pagos",
     pdf_current_payment: "THIS PAYMENT",
     pdf_current_payment_en: "ESTA CUOTA",
+    // Payment instruction ↔ plan integration
+    pi_select_installment: "Plan Installment",
+    pi_select_installment_help: "Select an installment from the payment plan to auto-fill the fields",
+    pi_select_installment_ph: "— Select installment —",
+    pi_no_pending: "No pending installments in the plan",
+    pi_linked_to: "Linked to Installment",
+    pi_unlock_amount: "Different Amount",
+    pi_unlock_warning: "The amount was manually changed. Make sure this is correct.",
+    pi_relock: "Restore",
+    pi_free_mode: "Free Instruction",
+    pi_free_mode_note: "This client has no payment plan. You can create an instruction with any amount.",
+    pi_plan_balance: "Pending balance",
+    pi_inst_paid_already: "Already paid on this installment",
+    // Post-print registration
+    pi_register_payment: "Register this instruction as pending payment on the client?",
+    pi_register_yes: "Yes, register",
+    pi_register_no: "No, only print",
+    pi_registered: "Pending payment registered and linked to installment",
   },
 };
 
@@ -1591,7 +1627,7 @@ const Button = ({ children, onClick, variant = "primary", size = "md", type = "b
   );
 };
 
-const Input = ({ label, value, onChange, type = "text", placeholder, required, className = "", textarea, rows = 3, ...rest }) => (
+const Input = ({ label, value, onChange, type = "text", placeholder, required, className = "", textarea, rows = 3, disabled, ...rest }) => (
   <div className={className}>
     {label && (
       <label className="block text-[10px] uppercase tracking-[0.12em] text-[#1A2342]/60 mb-1.5" style={{ fontFamily: "'Manrope', sans-serif" }}>
@@ -1600,27 +1636,29 @@ const Input = ({ label, value, onChange, type = "text", placeholder, required, c
     )}
     {textarea ? (
       <textarea value={value || ""} onChange={e => onChange(e.target.value)} placeholder={placeholder} rows={rows}
-        className="w-full px-3 py-2 bg-[#FDFBF6] border border-[#1A2342]/15 focus:border-[#4A6FA5] focus:outline-none text-sm text-[#1A2342] placeholder:text-[#1A2342]/30"
+        disabled={disabled}
+        className={`w-full px-3 py-2 border focus:outline-none text-sm text-[#1A2342] placeholder:text-[#1A2342]/30 ${disabled ? "bg-[#1A2342]/5 border-[#1A2342]/10 cursor-not-allowed text-[#1A2342]/70" : "bg-[#FDFBF6] border-[#1A2342]/15 focus:border-[#4A6FA5]"}`}
         style={{ fontFamily: "'Manrope', sans-serif" }}
         {...rest} />
     ) : (
       <input type={type} value={value || ""} onChange={e => onChange(e.target.value)} placeholder={placeholder}
-        className="w-full px-3 py-2 bg-[#FDFBF6] border border-[#1A2342]/15 focus:border-[#4A6FA5] focus:outline-none text-sm text-[#1A2342] placeholder:text-[#1A2342]/30"
+        disabled={disabled}
+        className={`w-full px-3 py-2 border focus:outline-none text-sm text-[#1A2342] placeholder:text-[#1A2342]/30 ${disabled ? "bg-[#1A2342]/5 border-[#1A2342]/10 cursor-not-allowed text-[#1A2342]/70" : "bg-[#FDFBF6] border-[#1A2342]/15 focus:border-[#4A6FA5]"}`}
         style={{ fontFamily: "'Manrope', sans-serif" }}
         {...rest} />
     )}
   </div>
 );
 
-const Select = ({ label, value, onChange, options, required, placeholder = "—", className = "" }) => (
+const Select = ({ label, value, onChange, options, required, placeholder = "—", className = "", disabled }) => (
   <div className={className}>
     {label && (
       <label className="block text-[10px] uppercase tracking-[0.12em] text-[#1A2342]/60 mb-1.5" style={{ fontFamily: "'Manrope', sans-serif" }}>
         {label} {required && <span className="text-[#B04B3F]">*</span>}
       </label>
     )}
-    <select value={value || ""} onChange={e => onChange(e.target.value)}
-      className="w-full px-3 py-2 bg-[#FDFBF6] border border-[#1A2342]/15 focus:border-[#4A6FA5] focus:outline-none text-sm text-[#1A2342]"
+    <select value={value || ""} onChange={e => onChange(e.target.value)} disabled={disabled}
+      className={`w-full px-3 py-2 border focus:outline-none text-sm text-[#1A2342] ${disabled ? "bg-[#1A2342]/5 border-[#1A2342]/10 cursor-not-allowed text-[#1A2342]/70" : "bg-[#FDFBF6] border-[#1A2342]/15 focus:border-[#4A6FA5]"}`}
       style={{ fontFamily: "'Manrope', sans-serif" }}>
       <option value="">{placeholder}</option>
       {options.map(o => (
@@ -3836,17 +3874,51 @@ function LotsEditor({ draft, setDraft, setSaved }) {
 
 // ------------------------- Payment Instruction Generator -------------------------
 
-function PaymentInstructionModal({ client, settings, onClose }) {
+function PaymentInstructionModal({ client, settings, onClose, onSaveClient }) {
   const { t, lang } = useT();
+  const [selectedInstallmentId, setSelectedInstallmentId] = useState("");
   const [concept, setConcept] = useState("Depósito de Reserva / Reservation Deposit");
   const [customConcept, setCustomConcept] = useState("");
   const [amount, setAmount] = useState("");
   const [paymentNumber, setPaymentNumber] = useState("");
   const [notes, setNotes] = useState("");
   const [mode, setMode] = useState("form"); // 'form' | 'preview'
+  const [amountUnlocked, setAmountUnlocked] = useState(false);
 
   const pricing = computePrice(client, settings);
   const pending = pricing.total - paidAmount(client);
+
+  // Determine if client has an active payment plan
+  const hasPlan = client.paymentPlan && client.paymentPlan.installments && client.paymentPlan.installments.length > 0;
+  const planInstallments = hasPlan ? client.paymentPlan.installments : [];
+
+  // Only show installments that are not fully paid
+  const billableInstallments = planInstallments.map((inst, idx) => {
+    const status = getInstallmentStatus(inst);
+    const balance = Math.max(0, (Number(inst.amount) || 0) - (Number(inst.paidAmount) || 0));
+    return { ...inst, index: idx, status, balance };
+  }).filter(inst => inst.status !== "paid" && inst.balance > 0);
+
+  const selectedInstallment = selectedInstallmentId
+    ? planInstallments.find(i => i.id === selectedInstallmentId)
+    : null;
+  const selectedInstallmentIdx = selectedInstallment
+    ? planInstallments.findIndex(i => i.id === selectedInstallmentId)
+    : -1;
+
+  // When user selects an installment, auto-fill concept/amount/number
+  useEffect(() => {
+    if (!selectedInstallment) return;
+    const balance = Math.max(0, (Number(selectedInstallment.amount) || 0) - (Number(selectedInstallment.paidAmount) || 0));
+    // Build bilingual concept: "ES Concept / EN Concept"
+    const esConcept = selectedInstallment.concept || `Cuota ${selectedInstallmentIdx + 1}`;
+    const enConcept = selectedInstallment.conceptEn || `Installment ${selectedInstallmentIdx + 1}`;
+    setConcept(`${esConcept} / ${enConcept}`);
+    setCustomConcept("");
+    setAmount(String(balance));
+    setPaymentNumber(`${selectedInstallmentIdx + 1} / ${planInstallments.length}`);
+    setAmountUnlocked(false); // re-lock when switching installments
+  }, [selectedInstallmentId]);
 
   const CONCEPT_OPTIONS = [
     t("concept_reservation"),
@@ -3860,13 +3932,14 @@ function PaymentInstructionModal({ client, settings, onClose }) {
 
   const finalConcept = (concept === "Otro / Other" || concept === "Other / Otro") ? customConcept : concept;
 
-  // Reference: AMBAR-V023-20260418-A7B3
+  // Reference includes installment number if linked: AMBAR-V007-C02-20260419-3XHI
   const reference = useMemo(() => {
     const lot = String(client.lotNumber || "XXX").padStart(3, "0");
     const date = new Date().toISOString().slice(0,10).replace(/-/g, "");
     const suffix = (client.id || "").slice(-4).toUpperCase();
-    return `AMBAR-V${lot}-${date}-${suffix}`;
-  }, [client]);
+    const instSegment = selectedInstallment ? `-C${String(selectedInstallmentIdx + 1).padStart(2, "0")}` : "";
+    return `AMBAR-V${lot}${instSegment}-${date}-${suffix}`;
+  }, [client, selectedInstallment, selectedInstallmentIdx]);
 
   const issueDate = new Date();
   const validityDays = settings.payments.validityDays || 15;
@@ -3949,6 +4022,34 @@ function PaymentInstructionModal({ client, settings, onClose }) {
       </html>
     `);
     printWindow.document.close();
+
+    // After printing, offer to register this instruction as a pending payment on the client
+    // Only ask if it's linked to an installment (otherwise it's a free instruction)
+    if (selectedInstallment && onSaveClient) {
+      // Small delay so the print dialog appears first
+      setTimeout(() => {
+        const msg = t("pi_register_payment");
+        if (confirm(msg)) {
+          const newPayment = {
+            id: uid(),
+            date: new Date().toISOString().slice(0, 10),
+            amount: Number(amount) || 0,
+            type: "installment",
+            method: "wire",
+            reference: reference,
+            linkedInstallmentId: selectedInstallment.id,
+            status: "pending",
+            notes: `Instructivo generado ${new Date().toISOString().slice(0, 10)}${notes ? " · " + notes : ""}`,
+          };
+          const updatedClient = {
+            ...client,
+            payments: [...(client.payments || []), newPayment],
+          };
+          onSaveClient(updatedClient);
+          alert(t("pi_registered"));
+        }
+      }, 1500);
+    }
   };
 
   const canPreview = finalConcept && Number(amount) > 0;
@@ -4296,24 +4397,113 @@ function PaymentInstructionModal({ client, settings, onClose }) {
 
       <SectionTitle subtitle={t("pi_details_sub")}>{t("pi_details")}</SectionTitle>
 
+      {/* Plan installment selector — only when client has plan */}
+      {hasPlan && (
+        <div className="p-4 bg-[#F4EBD4] border-l-2 border-[#C9A961] space-y-3">
+          <div className="flex items-center gap-2">
+            <CalendarDays className="w-4 h-4 text-[#8B7430]" strokeWidth={1.8} />
+            <span className="text-[11px] uppercase tracking-[0.12em] text-[#8B7430] font-semibold" style={{ fontFamily: "'Manrope', sans-serif" }}>
+              {t("pi_linked_to")}
+            </span>
+          </div>
+          {billableInstallments.length === 0 ? (
+            <div className="text-sm text-[#1A2342]/70" style={{ fontFamily: "'Manrope', sans-serif" }}>
+              {t("pi_no_pending")}
+            </div>
+          ) : (
+            <>
+              <Select label={t("pi_select_installment")} value={selectedInstallmentId} onChange={setSelectedInstallmentId}
+                options={[
+                  { v: "", l: t("pi_select_installment_ph") },
+                  ...billableInstallments.map(inst => {
+                    const statusLabel = {
+                      pending: t("plan_status_pending"),
+                      partial: t("plan_status_partial"),
+                      overdue: t("plan_status_overdue"),
+                      partial_overdue: t("plan_status_partial_overdue"),
+                    }[inst.status] || inst.status;
+                    return {
+                      v: inst.id,
+                      l: `${inst.index + 1}. ${inst.concept || `Cuota ${inst.index + 1}`} — ${fmtUSD(inst.balance)} (${statusLabel})`
+                    };
+                  })
+                ]}
+                required={false} />
+              <div className="text-[11px] text-[#1A2342]/60" style={{ fontFamily: "'Manrope', sans-serif" }}>
+                {t("pi_select_installment_help")}
+              </div>
+              {selectedInstallment && (
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-[11px] pt-2 border-t border-[#C9A961]/30" style={{ fontFamily: "'Manrope', sans-serif" }}>
+                  <div>
+                    <div className="text-[#1A2342]/50 uppercase tracking-[0.1em] text-[9px]">{t("plan_amount")}</div>
+                    <div className="text-[#1A2342] font-medium">{fmtUSD(selectedInstallment.amount)}</div>
+                  </div>
+                  <div>
+                    <div className="text-[#1A2342]/50 uppercase tracking-[0.1em] text-[9px]">{t("pi_inst_paid_already")}</div>
+                    <div className="text-[#1A2342]">{fmtUSD(selectedInstallment.paidAmount || 0)}</div>
+                  </div>
+                  <div>
+                    <div className="text-[#1A2342]/50 uppercase tracking-[0.1em] text-[9px]">{t("pi_plan_balance")}</div>
+                    <div className="text-[#C9A961] font-semibold">{fmtUSD(Math.max(0, (selectedInstallment.amount || 0) - (selectedInstallment.paidAmount || 0)))}</div>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      )}
+
+      {!hasPlan && (
+        <div className="p-3 bg-[#FDFBF6] border-l-2 border-[#1A2342]/30">
+          <div className="text-[11px] uppercase tracking-[0.12em] text-[#1A2342]/60 font-semibold mb-0.5" style={{ fontFamily: "'Manrope', sans-serif" }}>
+            {t("pi_free_mode")}
+          </div>
+          <div className="text-[11px] text-[#1A2342]/60" style={{ fontFamily: "'Manrope', sans-serif" }}>
+            {t("pi_free_mode_note")}
+          </div>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Select label={t("pi_concept")} value={concept} onChange={setConcept}
-          options={CONCEPT_OPTIONS.map(o => ({ v: o, l: o }))} required />
-        <Input label={t("pi_amount")} type="number" value={amount} onChange={setAmount}
-          placeholder={pending > 0 ? `${t("pi_amount_suggested")}: ${pending}` : "0"} required />
-        {(concept === "Otro / Other" || concept === "Other / Otro") && (
+        <div>
+          <Select label={t("pi_concept")} value={concept} onChange={setConcept}
+            options={CONCEPT_OPTIONS.map(o => ({ v: o, l: o }))} required
+            disabled={!!selectedInstallment} />
+        </div>
+        <div>
+          <div className="relative">
+            <Input label={t("pi_amount")} type="number" value={amount} onChange={setAmount}
+              placeholder={pending > 0 ? `${t("pi_amount_suggested")}: ${pending}` : "0"} required
+              disabled={!!selectedInstallment && !amountUnlocked} />
+            {selectedInstallment && (
+              <button type="button" onClick={() => setAmountUnlocked(!amountUnlocked)}
+                className="absolute right-0 top-0 text-[10px] uppercase tracking-[0.1em] px-2 py-0.5 text-[#8B7430] hover:text-[#1A2342] transition-colors"
+                style={{ fontFamily: "'Manrope', sans-serif" }}>
+                {amountUnlocked ? t("pi_relock") : t("pi_unlock_amount")}
+              </button>
+            )}
+          </div>
+          {amountUnlocked && selectedInstallment && (
+            <div className="text-[11px] text-[#B04B3F] mt-1 flex items-center gap-1" style={{ fontFamily: "'Manrope', sans-serif" }}>
+              <AlertTriangle className="w-3 h-3" strokeWidth={1.8} />
+              {t("pi_unlock_warning")}
+            </div>
+          )}
+        </div>
+        {(concept === "Otro / Other" || concept === "Other / Otro") && !selectedInstallment && (
           <Input label={t("pi_custom_concept")} value={customConcept} onChange={setCustomConcept}
-            placeholder={t("pi_custom_concept_ph")} className="col-span-2" />
+            placeholder={t("pi_custom_concept_ph")} className="md:col-span-2" />
         )}
         <Input label={t("pi_payment_number")} value={paymentNumber} onChange={setPaymentNumber}
-          placeholder={t("pi_payment_number_ph")} />
+          placeholder={t("pi_payment_number_ph")}
+          disabled={!!selectedInstallment} />
         <div className="flex items-end">
           <div className="text-[11px] text-[#1A2342]/50" style={{ fontFamily: "'Manrope', sans-serif" }}>
             {t("pi_validity_label")}: {settings.payments.validityDays} {t("pi_validity_editable")}
           </div>
         </div>
         <Input label={t("pi_additional_notes")} value={notes} onChange={setNotes} textarea rows={3}
-          placeholder={t("pi_additional_notes_ph")} className="col-span-2" />
+          placeholder={t("pi_additional_notes_ph")} className="md:col-span-2" />
       </div>
 
       {/* Reference preview */}
@@ -4856,6 +5046,7 @@ export default function App() {
             client={paymentInstructionFor}
             settings={settings}
             onClose={() => setPaymentInstructionFor(null)}
+            onSaveClient={handleSave}
           />
         )}
       </Modal>
