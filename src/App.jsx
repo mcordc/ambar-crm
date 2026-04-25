@@ -8,7 +8,7 @@ import {
   AlertCircle, TrendingUp, Eye, ArrowLeft, MapPin, Calendar,
   FileText, Phone, Mail, Globe, Briefcase, Copy, Loader2,
   Settings, Printer, Receipt, Languages, LogOut, Lock,
-  FolderOpen, File, FileImage, Paperclip, CalendarDays, AlertTriangle, Clock
+  FolderOpen, File, FileImage, Paperclip, CalendarDays, AlertTriangle, Clock, MoreVertical
 } from "lucide-react";
 
 // ------------------------- Supabase Client -------------------------
@@ -1400,6 +1400,159 @@ const stageToStatus = (stage) => {
   }
 };
 
+// Determine the primary contextual action for a client based on their state.
+// Returns { type, label, labelEn, variant, icon, urgency, payload }
+// type: "advance_stage" | "generate_instruction" | "confirm_instruction" | "edit" | "none"
+// variant: "gold" | "danger" | "primary" | "ghost"
+// urgency: "high" (red), "medium" (gold), "low" (neutral)
+const getPrimaryAction = (client, settings) => {
+  if (!client) return null;
+  const stage = getClientStage(client);
+  const today = new Date();
+  const todayISOStr = today.toISOString().slice(0, 10);
+  const graceDays = Number(client.graceDays) || 0;
+
+  // 1. Pending instruction confirmation has highest priority (something the client just paid)
+  const pendingInstruction = (client.paymentInstructions || []).find(
+    i => i.status === "in_transit"
+  );
+  if (pendingInstruction) {
+    return {
+      type: "confirm_instruction",
+      label: "Confirmar Pago en Tránsito",
+      labelEn: "Confirm Payment in Transit",
+      sub: pendingInstruction.reference,
+      variant: "gold",
+      icon: "Check",
+      urgency: "high",
+      payload: { instructionId: pendingInstruction.id },
+    };
+  }
+
+  // 2. Overdue installment — needs cobro action
+  if (client.paymentPlan?.installments) {
+    const overdue = client.paymentPlan.installments
+      .map((inst, idx) => ({ ...inst, idx }))
+      .find(inst => {
+        const status = getInstallmentStatus(inst, graceDays);
+        return status === "overdue" || status === "partial_overdue";
+      });
+    if (overdue) {
+      // If there's already a non-confirmed instruction for this installment, suggest confirming it
+      const existingInst = (client.paymentInstructions || []).find(
+        i => i.linkedInstallmentId === overdue.id && i.status !== "confirmed" && i.status !== "cancelled"
+      );
+      if (existingInst) {
+        const daysAgo = Math.floor((today - new Date(existingInst.issueDate)) / (1000 * 60 * 60 * 24));
+        return {
+          type: "confirm_instruction",
+          label: `Confirmar Cobro Vencido (Cuota ${overdue.idx + 1})`,
+          labelEn: `Confirm Overdue Payment (Installment ${overdue.idx + 1})`,
+          sub: `${daysAgo} días desde el envío`,
+          subEn: `${daysAgo} days since sent`,
+          variant: "danger",
+          icon: "AlertTriangle",
+          urgency: "high",
+          payload: { instructionId: existingInst.id },
+        };
+      }
+      return {
+        type: "generate_instruction",
+        label: `Cobrar Cuota Vencida (Cuota ${overdue.idx + 1})`,
+        labelEn: `Collect Overdue (Installment ${overdue.idx + 1})`,
+        sub: `Vencida el ${fmtDate(overdue.dueDate)}`,
+        subEn: `Due ${fmtDate(overdue.dueDate)}`,
+        variant: "danger",
+        icon: "AlertTriangle",
+        urgency: "high",
+        payload: { installmentId: overdue.id },
+      };
+    }
+  }
+
+  // 3. Waiting instruction more than 5 days old — suggest follow-up
+  const oldWaitingInstruction = (client.paymentInstructions || []).find(i => {
+    if (i.status !== "waiting") return false;
+    const daysAgo = Math.floor((today - new Date(i.issueDate)) / (1000 * 60 * 60 * 24));
+    return daysAgo >= 5;
+  });
+  if (oldWaitingInstruction) {
+    const daysAgo = Math.floor((today - new Date(oldWaitingInstruction.issueDate)) / (1000 * 60 * 60 * 24));
+    return {
+      type: "confirm_instruction",
+      label: "Confirmar Estado del Pago",
+      labelEn: "Confirm Payment Status",
+      sub: `${oldWaitingInstruction.reference} · ${daysAgo} días pendiente`,
+      subEn: `${oldWaitingInstruction.reference} · ${daysAgo} days pending`,
+      variant: "gold",
+      icon: "Clock",
+      urgency: "medium",
+      payload: { instructionId: oldWaitingInstruction.id },
+    };
+  }
+
+  // 4. Upcoming installment within 14 days — suggest generating instruction
+  if (client.paymentPlan?.installments) {
+    const fourteenFromNow = new Date(Date.now() + 14 * 86400000).toISOString().slice(0, 10);
+    const upcoming = client.paymentPlan.installments
+      .map((inst, idx) => ({ ...inst, idx }))
+      .find(inst => {
+        const status = getInstallmentStatus(inst, graceDays);
+        if (status === "paid") return false;
+        return inst.dueDate && inst.dueDate >= todayISOStr && inst.dueDate <= fourteenFromNow;
+      });
+    if (upcoming) {
+      // If there's an existing instruction for this installment, prioritize confirmation
+      const existingInst = (client.paymentInstructions || []).find(
+        i => i.linkedInstallmentId === upcoming.id && i.status !== "confirmed" && i.status !== "cancelled"
+      );
+      if (!existingInst) {
+        return {
+          type: "generate_instruction",
+          label: `Generar Instructivo Cuota ${upcoming.idx + 1}`,
+          labelEn: `Generate Instruction Installment ${upcoming.idx + 1}`,
+          sub: `Vence ${fmtDate(upcoming.dueDate)}`,
+          subEn: `Due ${fmtDate(upcoming.dueDate)}`,
+          variant: "gold",
+          icon: "Receipt",
+          urgency: "medium",
+          payload: { installmentId: upcoming.id },
+        };
+      }
+    }
+  }
+
+  // 5. Stage advance available
+  const nextStage = getNextStage(stage);
+  if (nextStage) {
+    const cfg = STAGE_CONFIG[nextStage];
+    return {
+      type: "advance_stage",
+      label: `Marcar como ${cfg.label}`,
+      labelEn: `Mark as ${cfg.labelEn}`,
+      sub: cfg.description,
+      subEn: cfg.descriptionEn,
+      variant: "gold",
+      icon: "Check",
+      urgency: "medium",
+      payload: { targetStage: nextStage },
+    };
+  }
+
+  // 6. Default: edit (low urgency, neutral)
+  return {
+    type: "edit",
+    label: "Editar Información",
+    labelEn: "Edit Information",
+    sub: "Sin acciones pendientes",
+    subEn: "No pending actions",
+    variant: "ghost",
+    icon: "Edit3",
+    urgency: "low",
+    payload: {},
+  };
+};
+
 // Compute villa pricing — takes optional settings (falls back to defaults)
 const computePrice = (client, settings) => {
   const models = settings?.villaModels || DEFAULT_SETTINGS.villaModels;
@@ -2034,6 +2187,52 @@ const Button = ({ children, onClick, variant = "primary", size = "md", type = "b
     </button>
   );
 };
+
+// Dropdown menu of secondary actions (kebab menu)
+function ActionMenu({ items }) {
+  const [open, setOpen] = useState(false);
+  const ref = React.useRef(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e) => {
+      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [open]);
+
+  return (
+    <div className="relative" ref={ref}>
+      <button onClick={() => setOpen(!open)}
+        className="p-2 hover:bg-[#1A2342]/5 transition-colors border border-[#1A2342]/15"
+        title="Más acciones">
+        <MoreVertical className="w-4 h-4 text-[#1A2342]/70" strokeWidth={1.8} />
+      </button>
+      {open && (
+        <div className="absolute right-0 top-full mt-1 bg-[#FDFBF6] border border-[#1A2342]/15 shadow-lg z-50 min-w-[200px]">
+          {items.map((item, i) => {
+            const Icon = item.icon;
+            return (
+              <button key={i}
+                onClick={() => { setOpen(false); item.onClick && item.onClick(); }}
+                disabled={item.disabled}
+                className={`w-full flex items-center gap-2 px-4 py-2.5 text-sm text-left transition-colors border-b border-[#1A2342]/10 last:border-b-0 ${
+                  item.danger
+                    ? "text-[#B04B3F] hover:bg-[#B04B3F]/5"
+                    : "text-[#1A2342] hover:bg-[#1A2342]/5"
+                } disabled:opacity-40 disabled:cursor-not-allowed`}
+                style={{ fontFamily: "'Manrope', sans-serif" }}>
+                {Icon && <Icon className="w-3.5 h-3.5" strokeWidth={1.8} />}
+                <span>{item.label}</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
 
 const Input = ({ label, value, onChange, type = "text", placeholder, required, className = "", textarea, rows = 3, disabled, ...rest }) => (
   <div className={className}>
@@ -3585,10 +3784,73 @@ function ClientDetail({ client, onEdit, onEditTab, onAdvanceStage, onClose, onDe
             )}
           </div>
         </div>
-        <div className="flex gap-2 flex-wrap">
-          <Button onClick={() => onGeneratePayment(client)} variant="gold" icon={Receipt}>{t("cd_gen_payment_btn")}</Button>
-          <Button onClick={onEdit} variant="primary" icon={Edit3} title={t("edit_full_help")}>{t("edit_full")}</Button>
-          <Button onClick={() => { if (confirm(t("lbl_confirm_delete"))) onDelete(client.id); }} variant="danger" icon={Trash2}>{t("delete")}</Button>
+        <div className="flex gap-2 flex-wrap items-stretch">
+          {(() => {
+            const action = getPrimaryAction(client, settings);
+            if (!action) return null;
+
+            const handlePrimary = () => {
+              if (action.type === "advance_stage") {
+                onAdvanceStage();
+              } else if (action.type === "generate_instruction") {
+                onGeneratePayment(client);
+              } else if (action.type === "confirm_instruction") {
+                onConfirmInstruction(action.payload.instructionId);
+              } else if (action.type === "edit") {
+                onEdit();
+              }
+            };
+
+            // Map icon name to component
+            const ICON_MAP = {
+              Check, AlertTriangle, Receipt, Clock, Edit3,
+            };
+            const ActionIcon = ICON_MAP[action.icon] || Check;
+
+            const label = lang === "es" ? action.label : (action.labelEn || action.label);
+            const sub = lang === "es" ? action.sub : (action.subEn || action.sub);
+
+            // Style based on urgency
+            const variantClass = action.variant === "danger"
+              ? "bg-[#B04B3F] text-[#F5F1E8] hover:bg-[#9A3F35] border-[#B04B3F]"
+              : action.variant === "gold"
+              ? "bg-[#C9A961] text-[#1A2342] hover:bg-[#B99A52] border-[#C9A961]"
+              : action.variant === "primary"
+              ? "bg-[#1A2342] text-[#F5F1E8] hover:bg-[#2A3556] border-[#1A2342]"
+              : "bg-[#FDFBF6] text-[#1A2342] hover:bg-[#1A2342]/5 border-[#1A2342]/15";
+
+            return (
+              <button onClick={handlePrimary}
+                className={`inline-flex items-start gap-3 px-5 py-3 border transition-all duration-150 text-left max-w-md ${variantClass}`}
+                style={{ fontFamily: "'Manrope', sans-serif" }}>
+                <ActionIcon className="w-5 h-5 flex-shrink-0 mt-0.5" strokeWidth={1.8} />
+                <div>
+                  <div className="font-medium tracking-wide text-sm">{label}</div>
+                  {sub && (
+                    <div className="text-[11px] opacity-75 mt-0.5">{sub}</div>
+                  )}
+                </div>
+              </button>
+            );
+          })()}
+          <ActionMenu items={[
+            {
+              icon: Receipt,
+              label: lang === "es" ? "Generar Instructivo de Pago" : "Generate Payment Instruction",
+              onClick: () => onGeneratePayment(client),
+            },
+            {
+              icon: Edit3,
+              label: t("edit_full"),
+              onClick: onEdit,
+            },
+            {
+              icon: Trash2,
+              label: t("delete"),
+              danger: true,
+              onClick: () => { if (confirm(t("lbl_confirm_delete"))) onDelete(client.id); },
+            },
+          ]} />
         </div>
       </div>
 
@@ -3608,11 +3870,6 @@ function ClientDetail({ client, onEdit, onEditTab, onAdvanceStage, onClose, onDe
                   {lang === "es" ? STAGE_CONFIG[currentStage].label : STAGE_CONFIG[currentStage].labelEn}
                 </div>
               </div>
-              {nextStage && (
-                <Button onClick={onAdvanceStage} variant="gold" icon={Check}>
-                  {t("stage_advance_to")} {lang === "es" ? STAGE_CONFIG[nextStage].label : STAGE_CONFIG[nextStage].labelEn}
-                </Button>
-              )}
             </div>
             <StageStepper currentStage={currentStage} lang={lang} />
             {nextStage && !canAdvance && (
