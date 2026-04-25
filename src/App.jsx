@@ -614,6 +614,47 @@ const TRANSLATIONS = {
     stm_template_help: "Puedes aplicar una plantilla ahora o dejarlo en blanco y configurar el plan detallado después.",
     stm_requirements_missing: "Aún faltan estos requisitos. Complétalos en la vista avanzada primero:",
     stm_confirm: "Confirmar y Avanzar",
+    // Payment Instruction Confirmation
+    pic_title: "Confirmación de Pago",
+    pic_sub: "El instructivo fue generado. Registra cuando el pago sea recibido.",
+    pic_instruction_summary: "Resumen del Instructivo",
+    pic_reference: "Referencia",
+    pic_amount_expected: "Monto Esperado",
+    pic_linked_installment: "Cuota Vinculada",
+    pic_issue_date: "Fecha Emisión",
+    pic_valid_until: "Válido Hasta",
+    pic_status_label: "Estado del Pago",
+    pic_status_waiting: "Esperando Pago",
+    pic_status_waiting_desc: "El instructivo fue enviado, el cliente aún no ha pagado",
+    pic_status_in_transit: "En Tránsito",
+    pic_status_in_transit_desc: "El cliente confirmó el wire, pero aún no llega al banco",
+    pic_status_confirmed: "Pago Confirmado",
+    pic_status_confirmed_desc: "El wire fue recibido en la cuenta",
+    pic_status_cancelled: "Cancelado",
+    pic_confirmation_details: "Detalles de la Confirmación",
+    pic_received_date: "Fecha de Recepción",
+    pic_received_amount: "Monto Recibido (USD)",
+    pic_bank_reference: "Referencia Bancaria del Wire",
+    pic_bank_reference_ph: "Ej: WIRE-88442, número de operación",
+    pic_payment_notes: "Notas del Pago (opcional)",
+    pic_confirm_and_update: "Confirmar Pago y Actualizar Plan",
+    pic_save_status_only: "Guardar Estado",
+    pic_amount_mismatch_warning: "⚠️ El monto recibido es diferente al esperado",
+    pic_amount_mismatch_detail: "Recibido: {received} · Esperado: {expected} · Diferencia: {diff}",
+    pic_amount_mismatch_continue: "¿Continuar con el monto diferente? Si es menor, la cuota quedará parcial. Si es mayor, se creará un excedente.",
+    pic_registered_success: "Pago registrado y vinculado a la cuota",
+    pic_status_updated: "Estado del instructivo actualizado",
+    pic_later: "Cerrar (confirmar después)",
+    // Instructions history
+    pi_history_title: "Historial de Instructivos",
+    pi_history_sub: "Instructivos de pago generados para este cliente",
+    pi_history_none: "No se han generado instructivos todavía",
+    pi_history_confirm_btn: "Confirmar Pago",
+    pi_history_view_btn: "Ver Detalles",
+    pi_history_days_pending: "días pendiente",
+    pi_history_pending_label: "Pendiente",
+    // Dashboard alert
+    alert_instructions_pending: "instructivos con pago pendiente por más de 15 días",
   },
   en: {
     // Brand
@@ -1147,6 +1188,47 @@ const TRANSLATIONS = {
     stm_template_help: "You can apply a template now or leave blank and configure the detailed plan later.",
     stm_requirements_missing: "These requirements are still missing. Complete them in the advanced view first:",
     stm_confirm: "Confirm and Advance",
+    // Payment Instruction Confirmation
+    pic_title: "Payment Confirmation",
+    pic_sub: "The instruction was generated. Register when the payment is received.",
+    pic_instruction_summary: "Instruction Summary",
+    pic_reference: "Reference",
+    pic_amount_expected: "Expected Amount",
+    pic_linked_installment: "Linked Installment",
+    pic_issue_date: "Issue Date",
+    pic_valid_until: "Valid Until",
+    pic_status_label: "Payment Status",
+    pic_status_waiting: "Waiting for Payment",
+    pic_status_waiting_desc: "The instruction was sent, the client hasn't paid yet",
+    pic_status_in_transit: "In Transit",
+    pic_status_in_transit_desc: "The client confirmed the wire but it hasn't arrived yet",
+    pic_status_confirmed: "Payment Confirmed",
+    pic_status_confirmed_desc: "The wire was received in the account",
+    pic_status_cancelled: "Cancelled",
+    pic_confirmation_details: "Confirmation Details",
+    pic_received_date: "Received Date",
+    pic_received_amount: "Received Amount (USD)",
+    pic_bank_reference: "Wire Bank Reference",
+    pic_bank_reference_ph: "Ex: WIRE-88442, operation number",
+    pic_payment_notes: "Payment Notes (optional)",
+    pic_confirm_and_update: "Confirm Payment and Update Plan",
+    pic_save_status_only: "Save Status",
+    pic_amount_mismatch_warning: "⚠️ Received amount differs from expected",
+    pic_amount_mismatch_detail: "Received: {received} · Expected: {expected} · Difference: {diff}",
+    pic_amount_mismatch_continue: "Continue with different amount? If less, installment stays partial. If more, overflow will be created.",
+    pic_registered_success: "Payment registered and linked to installment",
+    pic_status_updated: "Instruction status updated",
+    pic_later: "Close (confirm later)",
+    // Instructions history
+    pi_history_title: "Instructions History",
+    pi_history_sub: "Payment instructions generated for this client",
+    pi_history_none: "No instructions generated yet",
+    pi_history_confirm_btn: "Confirm Payment",
+    pi_history_view_btn: "View Details",
+    pi_history_days_pending: "days pending",
+    pi_history_pending_label: "Pending",
+    // Dashboard alert
+    alert_instructions_pending: "instructions with payment pending for more than 15 days",
   },
 };
 
@@ -3459,7 +3541,7 @@ function StageTransitionModal({ open, client, targetStage, settings, onConfirm, 
   );
 }
 
-function ClientDetail({ client, onEdit, onEditTab, onAdvanceStage, onClose, onDelete, onGeneratePayment }) {
+function ClientDetail({ client, onEdit, onEditTab, onAdvanceStage, onClose, onDelete, onGeneratePayment, onConfirmInstruction }) {
   const { t, lang } = useT();
   const settings = useSettings();
   const villaModels = settings.villaModels || DEFAULT_SETTINGS.villaModels;
@@ -3762,6 +3844,73 @@ function ClientDetail({ client, onEdit, onEditTab, onAdvanceStage, onClose, onDe
         );
       })()}
 
+      {/* Payment Instructions History */}
+      {client.paymentInstructions && client.paymentInstructions.length > 0 && (() => {
+        const graceDays = Number(client.graceDays) || 0;
+        const today = new Date();
+        const STATUS_COLORS = {
+          waiting:    { color: "#8B8471", bg: "#EFEAE0", label: t("pic_status_waiting") },
+          in_transit: { color: "#C9A961", bg: "#F4EBD4", label: t("pic_status_in_transit") },
+          confirmed:  { color: "#2D5E3E", bg: "#D4E6D8", label: t("pic_status_confirmed") },
+          cancelled:  { color: "#B04B3F", bg: "#F3DDD9", label: t("pic_status_cancelled") },
+        };
+        const sortedInstructions = [...client.paymentInstructions].sort((a, b) =>
+          (b.issueDate || "").localeCompare(a.issueDate || "")
+        );
+        return (
+          <div>
+            <SectionTitle subtitle={t("pi_history_sub")}>{t("pi_history_title")}</SectionTitle>
+            <div className="border border-[#1A2342]/10 overflow-x-auto">
+              <div className="min-w-[700px]">
+                <div className="grid grid-cols-12 gap-2 px-3 py-2 bg-[#1A2342]/5 text-[10px] uppercase tracking-[0.12em] text-[#1A2342]/60" style={{ fontFamily: "'Manrope', sans-serif" }}>
+                  <div className="col-span-1">{t("pic_issue_date")}</div>
+                  <div className="col-span-4">{t("pic_reference")}</div>
+                  <div className="col-span-2 text-right">{t("pic_amount_expected")}</div>
+                  <div className="col-span-2">{t("pic_status_label")}</div>
+                  <div className="col-span-3 text-right"></div>
+                </div>
+                {sortedInstructions.map(inst => {
+                  const cfg = STATUS_COLORS[inst.status] || STATUS_COLORS.waiting;
+                  const issueDate = new Date(inst.issueDate);
+                  const daysPending = inst.status !== "confirmed" && inst.status !== "cancelled"
+                    ? Math.floor((today - issueDate) / (1000 * 60 * 60 * 24))
+                    : null;
+                  return (
+                    <div key={inst.id} className="grid grid-cols-12 gap-2 px-3 py-2 border-t border-[#1A2342]/10 items-center text-sm" style={{ fontFamily: "'Manrope', sans-serif" }}>
+                      <div className="col-span-1 text-[#1A2342]/60 text-[11px]">{fmtDate(inst.issueDate)}</div>
+                      <div className="col-span-4">
+                        <div className="text-[#1A2342] font-mono text-[11px]">{inst.reference}</div>
+                        {inst.concept && <div className="text-[10px] text-[#1A2342]/50 mt-0.5">{inst.concept}</div>}
+                      </div>
+                      <div className="col-span-2 text-right text-[#1A2342] font-medium">{fmtUSD(inst.amount)}</div>
+                      <div className="col-span-2">
+                        <span className="inline-block px-2 py-0.5 text-[10px] uppercase tracking-[0.08em]" style={{ color: cfg.color, backgroundColor: cfg.bg }}>
+                          {cfg.label}
+                        </span>
+                        {daysPending !== null && daysPending > 0 && (
+                          <div className={`text-[10px] mt-0.5 ${daysPending > 15 ? "text-[#B04B3F]" : "text-[#1A2342]/50"}`}>
+                            {daysPending} {t("pi_history_days_pending")}
+                          </div>
+                        )}
+                      </div>
+                      <div className="col-span-3 text-right">
+                        {inst.status !== "confirmed" && inst.status !== "cancelled" && onConfirmInstruction && (
+                          <button onClick={() => onConfirmInstruction(inst.id)}
+                            className="text-[11px] uppercase tracking-[0.1em] px-3 py-1.5 bg-[#C9A961] text-[#1A2342] hover:bg-[#B8984F] transition-colors font-medium"
+                            style={{ fontFamily: "'Manrope', sans-serif" }}>
+                            {t("pi_history_confirm_btn")}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
       {/* Broker Commission — internal view */}
       {client.brokerName && (() => {
         const c = computeCommission(client, settings);
@@ -3872,6 +4021,10 @@ function Dashboard({ clients, onNewClient, onExport, onGoToClients, onGoToVillas
     // Installment alerts across all active clients
     let totalOverdue = 0, totalUpcoming = 0;
     const overdueClients = [], upcomingClients = [];
+    // Stale instructions (waiting/in_transit > 15 days)
+    let totalStaleInstructions = 0;
+    const staleInstructionClients = [];
+    const today = new Date();
     clients.forEach(c => {
       if (c.brokerName) {
         const comm = computeCommission(c, settings);
@@ -3880,7 +4033,7 @@ function Dashboard({ clients, onNewClient, onExport, onGoToClients, onGoToVillas
         pendingCommissions += comm.pendingToBroker;
       }
       if (c.paymentPlan && !["cancelled","completed"].includes(c.status)) {
-        const pt = computePlanTotals(c.paymentPlan);
+        const pt = computePlanTotals(c.paymentPlan, c.graceDays);
         if (pt.overdueCount > 0) {
           totalOverdue += pt.overdueCount;
           overdueClients.push({ id: c.id, name: c.fullName || c.companyName, count: pt.overdueCount });
@@ -3890,8 +4043,25 @@ function Dashboard({ clients, onNewClient, onExport, onGoToClients, onGoToVillas
           upcomingClients.push({ id: c.id, name: c.fullName || c.companyName, count: pt.upcomingCount });
         }
       }
+      // Check stale payment instructions
+      if (c.paymentInstructions && c.paymentInstructions.length > 0) {
+        const stale = c.paymentInstructions.filter(inst => {
+          if (inst.status === "confirmed" || inst.status === "cancelled") return false;
+          const issued = new Date(inst.issueDate);
+          const daysAgo = Math.floor((today - issued) / (1000 * 60 * 60 * 24));
+          return daysAgo > 15;
+        });
+        if (stale.length > 0) {
+          totalStaleInstructions += stale.length;
+          staleInstructionClients.push({
+            id: c.id,
+            name: c.fullName || c.companyName,
+            count: stale.length,
+          });
+        }
+      }
     });
-    return { totalRevenue, totalPaid, active, byStatus, soldLots: soldLots.size, availableLots: totalLots - soldLots.size, totalCommissions, earnedCommissions, pendingCommissions, totalOverdue, totalUpcoming, overdueClients, upcomingClients };
+    return { totalRevenue, totalPaid, active, byStatus, soldLots: soldLots.size, availableLots: totalLots - soldLots.size, totalCommissions, earnedCommissions, pendingCommissions, totalOverdue, totalUpcoming, overdueClients, upcomingClients, totalStaleInstructions, staleInstructionClients };
   }, [clients, settings, totalLots]);
 
   const recentClients = useMemo(() => [...clients].sort((a, b) => (b.updatedAt || b.createdAt || "").localeCompare(a.updatedAt || a.createdAt || "")).slice(0, 5), [clients]);
@@ -3929,8 +4099,8 @@ function Dashboard({ clients, onNewClient, onExport, onGoToClients, onGoToVillas
       </div>
 
       {/* Installment Alerts — shown only if there are overdue or upcoming */}
-      {(stats.totalOverdue > 0 || stats.totalUpcoming > 0) && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+      {(stats.totalOverdue > 0 || stats.totalUpcoming > 0 || stats.totalStaleInstructions > 0) && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
           {stats.totalOverdue > 0 && (
             <button onClick={onGoToClients}
               className="p-4 bg-[#F3DDD9] border-l-4 border-[#B04B3F] flex items-start gap-3 text-left hover:bg-[#EECFC8] transition-colors">
@@ -3957,6 +4127,21 @@ function Dashboard({ clients, onNewClient, onExport, onGoToClients, onGoToVillas
                 <div className="text-[11px] text-[#1A2342]/70 mt-0.5" style={{ fontFamily: "'Manrope', sans-serif" }}>
                   {stats.upcomingClients.slice(0, 3).map(c => c.name).join(" · ")}
                   {stats.upcomingClients.length > 3 ? ` · +${stats.upcomingClients.length - 3}` : ""}
+                </div>
+              </div>
+            </button>
+          )}
+          {stats.totalStaleInstructions > 0 && (
+            <button onClick={onGoToClients}
+              className="p-4 bg-[#F4EBD4] border-l-4 border-[#8B7430] flex items-start gap-3 text-left hover:bg-[#EEE2C2] transition-colors">
+              <Receipt className="w-5 h-5 text-[#8B7430] flex-shrink-0 mt-0.5" strokeWidth={1.5} />
+              <div className="flex-1">
+                <div className="text-sm font-semibold text-[#8B7430]" style={{ fontFamily: "'Manrope', sans-serif" }}>
+                  {stats.totalStaleInstructions} {t("alert_instructions_pending")}
+                </div>
+                <div className="text-[11px] text-[#1A2342]/70 mt-0.5" style={{ fontFamily: "'Manrope', sans-serif" }}>
+                  {stats.staleInstructionClients.slice(0, 3).map(c => c.name).join(" · ")}
+                  {stats.staleInstructionClients.length > 3 ? ` · +${stats.staleInstructionClients.length - 3}` : ""}
                 </div>
               </div>
             </button>
@@ -4643,6 +4828,261 @@ function LotsEditor({ draft, setDraft, setSaved }) {
 
 // ------------------------- Payment Instruction Generator -------------------------
 
+// ------------------------- Instruction Confirmation View -------------------------
+// Shown after user prints/sends a payment instruction.
+// Lets them mark the status (waiting/in_transit/confirmed) and when confirmed,
+// creates a payment entry linked to the plan installment.
+
+function InstructionConfirmationView({ client, instructionId, settings, onClose, onSaveClient }) {
+  const { t, lang } = useT();
+
+  // Find the instruction in the client
+  const instruction = (client?.paymentInstructions || []).find(i => i.id === instructionId);
+  const [status, setStatus] = useState(instruction?.status || "waiting");
+  const [receivedDate, setReceivedDate] = useState(todayISO());
+  const [receivedAmount, setReceivedAmount] = useState(String(instruction?.amount || ""));
+  const [bankReference, setBankReference] = useState("");
+  const [paymentNotes, setPaymentNotes] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  if (!instruction) {
+    return (
+      <div className="p-6 text-center text-sm text-[#1A2342]/60" style={{ fontFamily: "'Manrope', sans-serif" }}>
+        {lang === "es" ? "No se encontró el instructivo." : "Instruction not found."}
+        <div className="mt-4">
+          <Button onClick={onClose} variant="outline">{t("close")}</Button>
+        </div>
+      </div>
+    );
+  }
+
+  // Find linked installment for display
+  const planInstallments = client.paymentPlan?.installments || [];
+  const linkedInstallment = planInstallments.find(i => i.id === instruction.linkedInstallmentId);
+  const linkedInstIdx = planInstallments.findIndex(i => i.id === instruction.linkedInstallmentId);
+
+  const expected = Number(instruction.amount) || 0;
+  const received = Number(receivedAmount) || 0;
+  const diff = received - expected;
+  const hasMismatch = status === "confirmed" && received > 0 && Math.abs(diff) > 1;
+
+  // Save status only (waiting / in_transit / cancelled)
+  const handleSaveStatus = async () => {
+    setSaving(true);
+    const updated = {
+      ...client,
+      paymentInstructions: (client.paymentInstructions || []).map(i =>
+        i.id === instructionId ? { ...i, status } : i
+      ),
+    };
+    await onSaveClient(updated);
+    setSaving(false);
+    onClose();
+  };
+
+  // Confirm payment: create a payment record, link to installment, update plan
+  const handleConfirmPayment = async () => {
+    if (received <= 0) {
+      alert(lang === "es"
+        ? "Ingresa el monto recibido (debe ser mayor a 0)."
+        : "Enter the received amount (must be greater than 0).");
+      return;
+    }
+
+    // Warn if mismatch
+    if (hasMismatch) {
+      const msg = t("pic_amount_mismatch_continue");
+      if (!confirm(msg)) return;
+    }
+
+    setSaving(true);
+
+    // Create the payment record
+    const newPayment = {
+      id: uid(),
+      date: receivedDate,
+      amount: received,
+      type: "installment",
+      method: "wire",
+      reference: bankReference || instruction.reference,
+      linkedInstallmentId: instruction.linkedInstallmentId,
+      status: "confirmed",
+      notes: paymentNotes
+        ? `${paymentNotes} · ${lang === "es" ? "Instructivo" : "Instruction"}: ${instruction.reference}`
+        : `${lang === "es" ? "Instructivo" : "Instruction"}: ${instruction.reference}`,
+    };
+
+    // Update installment paidAmount if linked
+    let updatedPlan = client.paymentPlan;
+    if (instruction.linkedInstallmentId && updatedPlan?.installments) {
+      updatedPlan = {
+        ...updatedPlan,
+        installments: updatedPlan.installments.map(inst => {
+          if (inst.id !== instruction.linkedInstallmentId) return inst;
+          const currentPaid = Number(inst.paidAmount) || 0;
+          return {
+            ...inst,
+            paidAmount: currentPaid + received,
+            linkedPaymentIds: [...(inst.linkedPaymentIds || []), newPayment.id],
+          };
+        }),
+      };
+    }
+
+    // Update the instruction to confirmed
+    const updatedInstructions = (client.paymentInstructions || []).map(i =>
+      i.id === instructionId
+        ? {
+            ...i,
+            status: "confirmed",
+            confirmedAt: new Date().toISOString(),
+            confirmedPayment: {
+              receivedDate,
+              receivedAmount: received,
+              bankReference,
+              notes: paymentNotes,
+            },
+            paymentId: newPayment.id,
+          }
+        : i
+    );
+
+    const updated = {
+      ...client,
+      payments: [...(client.payments || []), newPayment],
+      paymentPlan: updatedPlan,
+      paymentInstructions: updatedInstructions,
+      updatedAt: new Date().toISOString(),
+    };
+
+    await onSaveClient(updated);
+    setSaving(false);
+    onClose();
+  };
+
+  const STATUS_OPTIONS = [
+    { v: "waiting",    label: t("pic_status_waiting"),    desc: t("pic_status_waiting_desc"),    icon: Clock,          color: "#8B8471", bg: "#EFEAE0" },
+    { v: "in_transit", label: t("pic_status_in_transit"), desc: t("pic_status_in_transit_desc"), icon: AlertTriangle,  color: "#C9A961", bg: "#F4EBD4" },
+    { v: "confirmed",  label: t("pic_status_confirmed"),  desc: t("pic_status_confirmed_desc"),  icon: Check,          color: "#2D5E3E", bg: "#D4E6D8" },
+  ];
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <h2 className="text-[#1A2342]" style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: "1.75rem", fontWeight: 500 }}>
+            {t("pic_title")}
+          </h2>
+          <p className="text-sm text-[#1A2342]/60 mt-1" style={{ fontFamily: "'Manrope', sans-serif" }}>
+            {t("pic_sub")}
+          </p>
+        </div>
+        <Button onClick={onClose} variant="ghost" icon={X}>{t("pic_later")}</Button>
+      </div>
+
+      {/* Instruction Summary */}
+      <div className="p-5 bg-[#FDFBF6] border border-[#1A2342]/10 space-y-3">
+        <div className="text-[10px] uppercase tracking-[0.2em] text-[#1A2342]/50" style={{ fontFamily: "'Manrope', sans-serif" }}>
+          {t("pic_instruction_summary")}
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm" style={{ fontFamily: "'Manrope', sans-serif" }}>
+          <div>
+            <div className="text-[10px] uppercase tracking-[0.12em] text-[#1A2342]/50 mb-1">{t("pic_reference")}</div>
+            <div className="text-[#1A2342] font-mono text-[13px]">{instruction.reference}</div>
+          </div>
+          <div>
+            <div className="text-[10px] uppercase tracking-[0.12em] text-[#1A2342]/50 mb-1">{t("pic_amount_expected")}</div>
+            <div className="text-[#1A2342]" style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: "1.25rem", fontWeight: 500 }}>
+              {fmtUSD(expected)} USD
+            </div>
+          </div>
+          {linkedInstallment && (
+            <div>
+              <div className="text-[10px] uppercase tracking-[0.12em] text-[#1A2342]/50 mb-1">{t("pic_linked_installment")}</div>
+              <div className="text-[#1A2342]">
+                {linkedInstIdx + 1}. {linkedInstallment.concept || `Cuota ${linkedInstIdx + 1}`}
+              </div>
+            </div>
+          )}
+          <div>
+            <div className="text-[10px] uppercase tracking-[0.12em] text-[#1A2342]/50 mb-1">{t("pic_valid_until")}</div>
+            <div className="text-[#1A2342]">{fmtDate(instruction.validUntil)}</div>
+          </div>
+        </div>
+      </div>
+
+      {/* Status Selector */}
+      <div>
+        <SectionTitle>{t("pic_status_label")}</SectionTitle>
+        <div className="space-y-2">
+          {STATUS_OPTIONS.map(opt => {
+            const Icon = opt.icon;
+            const active = status === opt.v;
+            return (
+              <button key={opt.v} type="button" onClick={() => setStatus(opt.v)}
+                className={`w-full text-left p-4 border transition-all flex items-start gap-3 ${active ? "border-[#1A2342] shadow-sm" : "border-[#1A2342]/15 hover:border-[#1A2342]/40"}`}
+                style={{ backgroundColor: active ? opt.bg : "#FDFBF6", fontFamily: "'Manrope', sans-serif" }}>
+                <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
+                  style={{ backgroundColor: active ? opt.color : "transparent", border: `2px solid ${opt.color}` }}>
+                  <Icon className="w-4 h-4" strokeWidth={2} style={{ color: active ? "#F5F1E8" : opt.color }} />
+                </div>
+                <div className="flex-1">
+                  <div className="text-sm font-medium text-[#1A2342]">{opt.label}</div>
+                  <div className="text-[11px] text-[#1A2342]/60 mt-0.5">{opt.desc}</div>
+                </div>
+                {active && <Check className="w-4 h-4 text-[#1A2342] mt-1" strokeWidth={2.5} />}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Confirmation Details (only when status === "confirmed") */}
+      {status === "confirmed" && (
+        <div className="space-y-4 p-5 bg-[#D4E6D8]/40 border border-[#2D5E3E]/20">
+          <SectionTitle className="mb-2">{t("pic_confirmation_details")}</SectionTitle>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Input label={t("pic_received_date")} type="date" value={receivedDate} onChange={setReceivedDate} required />
+            <Input label={t("pic_received_amount")} type="number" value={receivedAmount} onChange={setReceivedAmount} required />
+            <Input label={t("pic_bank_reference")} value={bankReference} onChange={setBankReference}
+              placeholder={t("pic_bank_reference_ph")} className="md:col-span-2" />
+            <Input label={t("pic_payment_notes")} value={paymentNotes} onChange={setPaymentNotes}
+              textarea rows={2} className="md:col-span-2" />
+          </div>
+
+          {hasMismatch && (
+            <div className="p-3 bg-[#F4EBD4] border-l-2 border-[#C9A961]">
+              <div className="text-sm text-[#8B7430] font-medium" style={{ fontFamily: "'Manrope', sans-serif" }}>
+                {t("pic_amount_mismatch_warning")}
+              </div>
+              <div className="text-[11px] text-[#1A2342]/70 mt-1" style={{ fontFamily: "'Manrope', sans-serif" }}>
+                {t("pic_amount_mismatch_detail")
+                  .replace("{received}", fmtUSD(received))
+                  .replace("{expected}", fmtUSD(expected))
+                  .replace("{diff}", (diff >= 0 ? "+" : "") + fmtUSD(Math.abs(diff)))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Actions */}
+      <div className="flex items-center justify-end gap-2 pt-4 border-t border-[#1A2342]/10">
+        {status !== "confirmed" ? (
+          <Button onClick={handleSaveStatus} variant="primary" disabled={saving} icon={saving ? Loader2 : Check}>
+            {t("pic_save_status_only")}
+          </Button>
+        ) : (
+          <Button onClick={handleConfirmPayment} variant="gold" disabled={saving} icon={saving ? Loader2 : Check}>
+            {t("pic_confirm_and_update")}
+          </Button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function PaymentInstructionModal({ client, settings, onClose, onSaveClient }) {
   const { t, lang } = useT();
   const [selectedInstallmentId, setSelectedInstallmentId] = useState("");
@@ -4651,7 +5091,8 @@ function PaymentInstructionModal({ client, settings, onClose, onSaveClient }) {
   const [amount, setAmount] = useState("");
   const [paymentNumber, setPaymentNumber] = useState("");
   const [notes, setNotes] = useState("");
-  const [mode, setMode] = useState("form"); // 'form' | 'preview'
+  const [mode, setMode] = useState("form"); // 'form' | 'preview' | 'confirm'
+  const [savedInstructionId, setSavedInstructionId] = useState(null); // tracks saved instruction in confirm mode
   const [amountUnlocked, setAmountUnlocked] = useState(false);
 
   const pricing = computePrice(client, settings);
@@ -4792,32 +5233,31 @@ function PaymentInstructionModal({ client, settings, onClose, onSaveClient }) {
     `);
     printWindow.document.close();
 
-    // After printing, offer to register this instruction as a pending payment on the client
-    // Only ask if it's linked to an installment (otherwise it's a free instruction)
-    if (selectedInstallment && onSaveClient) {
-      // Small delay so the print dialog appears first
+    // After printing, automatically save the instruction to the client and switch to confirm mode
+    if (onSaveClient) {
       setTimeout(() => {
-        const msg = t("pi_register_payment");
-        if (confirm(msg)) {
-          const newPayment = {
-            id: uid(),
-            date: new Date().toISOString().slice(0, 10),
-            amount: Number(amount) || 0,
-            type: "installment",
-            method: "wire",
-            reference: reference,
-            linkedInstallmentId: selectedInstallment.id,
-            status: "pending",
-            notes: `Instructivo generado ${new Date().toISOString().slice(0, 10)}${notes ? " · " + notes : ""}`,
-          };
-          const updatedClient = {
-            ...client,
-            payments: [...(client.payments || []), newPayment],
-          };
-          onSaveClient(updatedClient);
-          alert(t("pi_registered"));
-        }
-      }, 1500);
+        const newInstruction = {
+          id: uid(),
+          reference: reference,
+          issueDate: issueDate.toISOString().slice(0, 10),
+          validUntil: validUntil.toISOString().slice(0, 10),
+          amount: Number(amount) || 0,
+          concept: finalConcept,
+          linkedInstallmentId: selectedInstallment?.id || null,
+          status: "waiting",
+          confirmedAt: null,
+          confirmedPayment: null,
+          paymentId: null,
+          notes: notes || "",
+        };
+        const updatedClient = {
+          ...client,
+          paymentInstructions: [...(client.paymentInstructions || []), newInstruction],
+        };
+        onSaveClient(updatedClient);
+        setSavedInstructionId(newInstruction.id);
+        setMode("confirm");
+      }, 800);
     }
   };
 
@@ -4930,6 +5370,19 @@ function PaymentInstructionModal({ client, settings, onClose, onSaveClient }) {
   };
 
   const canPreview = finalConcept && Number(amount) > 0;
+
+  // Confirmation mode: after instruction has been printed/sent, collect payment confirmation
+  if (mode === "confirm") {
+    return (
+      <InstructionConfirmationView
+        client={client}
+        instructionId={savedInstructionId}
+        settings={settings}
+        onClose={onClose}
+        onSaveClient={onSaveClient}
+      />
+    );
+  }
 
   if (mode === "preview") {
     return (
@@ -5733,6 +6186,7 @@ export default function App() {
   const [quickCreateOpen, setQuickCreateOpen] = useState(false);
   const [formInitialTab, setFormInitialTab] = useState(null);
   const [transitionFor, setTransitionFor] = useState(null); // { client, targetStage }
+  const [confirmInstructionFor, setConfirmInstructionFor] = useState(null); // { client, instructionId }
 
   const openNew = () => { setQuickCreateOpen(true); };
   const openEdit = (client) => { setFormInitial(client); setFormInitialTab(null); setFormOpen(true); };
@@ -5938,6 +6392,7 @@ export default function App() {
               onClose={() => setSelectedClientId(null)}
               onDelete={handleDelete}
               onGeneratePayment={(c) => setPaymentInstructionFor(c)}
+              onConfirmInstruction={(instructionId) => setConfirmInstructionFor({ client: selectedClient, instructionId })}
             />
           </div>
         ) : view === "dashboard" ? (
@@ -5996,6 +6451,20 @@ export default function App() {
         onConfirm={handleConfirmTransition}
         onClose={() => setTransitionFor(null)}
       />
+
+      {/* Deferred Instruction Confirmation Modal */}
+      <Modal open={!!confirmInstructionFor} onClose={() => setConfirmInstructionFor(null)}
+        title={t("pic_title")} size="xl">
+        {confirmInstructionFor && (
+          <InstructionConfirmationView
+            client={confirmInstructionFor.client}
+            instructionId={confirmInstructionFor.instructionId}
+            settings={settings}
+            onClose={() => setConfirmInstructionFor(null)}
+            onSaveClient={handleSave}
+          />
+        )}
+      </Modal>
 
       {/* Payment Instruction Modal */}
       <Modal open={!!paymentInstructionFor} onClose={() => setPaymentInstructionFor(null)}
