@@ -655,6 +655,40 @@ const TRANSLATIONS = {
     pi_history_pending_label: "Pendiente",
     // Dashboard alert
     alert_instructions_pending: "instructivos con pago pendiente por más de 15 días",
+    // Prospect Journey
+    pj_section: "Recorrido del Prospecto",
+    pj_section_sub: "Registra las visitas al sitio, cartas y seguimientos con este cliente",
+    pj_no_events: "Aún no hay eventos registrados. Empieza añadiendo el primero.",
+    pj_add_event: "Añadir Evento",
+    pj_add_site_visit: "Programar Visita",
+    pj_add_letter: "Registrar Carta Enviada",
+    pj_add_follow_up: "Programar Seguimiento",
+    pj_add_custom: "Evento Personalizado",
+    pj_event_type: "Tipo de Evento",
+    pj_event_date: "Fecha",
+    pj_event_time: "Hora (opcional)",
+    pj_event_status: "Estado",
+    pj_event_notes: "Notas",
+    pj_event_notes_ph: "Detalles del evento, qué se discutió, observaciones...",
+    pj_event_performed_by: "Responsable (opcional)",
+    pj_event_performed_by_ph: "Quién realizó/realizará este evento",
+    pj_event_custom_label: "Nombre del Evento Personalizado",
+    pj_event_custom_label_ph: "Ej: Reunión con su contador, llamada con su esposa, etc.",
+    pj_status_scheduled: "Programado",
+    pj_status_completed: "Completado",
+    pj_status_cancelled: "Cancelado",
+    pj_mark_completed: "Marcar Completado",
+    pj_edit_event: "Editar",
+    pj_delete_event: "Eliminar",
+    pj_confirm_delete: "¿Eliminar este evento?",
+    pj_modal_new_title: "Nuevo Evento",
+    pj_modal_edit_title: "Editar Evento",
+    pj_save: "Guardar",
+    pj_save_and_complete: "Guardar como Completado",
+    pj_widget_title: "Próximos Eventos del Equipo",
+    pj_widget_sub: "Visitas, cartas y seguimientos programados para los próximos 14 días",
+    pj_widget_today: "HOY",
+    pj_widget_tomorrow: "MAÑANA",
   },
   en: {
     // Brand
@@ -1229,6 +1263,40 @@ const TRANSLATIONS = {
     pi_history_pending_label: "Pending",
     // Dashboard alert
     alert_instructions_pending: "instructions with payment pending for more than 15 days",
+    // Prospect Journey
+    pj_section: "Prospect Journey",
+    pj_section_sub: "Track site visits, invitation letters, and follow-ups with this client",
+    pj_no_events: "No events recorded yet. Start by adding the first one.",
+    pj_add_event: "Add Event",
+    pj_add_site_visit: "Schedule Visit",
+    pj_add_letter: "Record Letter Sent",
+    pj_add_follow_up: "Schedule Follow-up",
+    pj_add_custom: "Custom Event",
+    pj_event_type: "Event Type",
+    pj_event_date: "Date",
+    pj_event_time: "Time (optional)",
+    pj_event_status: "Status",
+    pj_event_notes: "Notes",
+    pj_event_notes_ph: "Event details, what was discussed, observations...",
+    pj_event_performed_by: "Responsible (optional)",
+    pj_event_performed_by_ph: "Who performed/will perform this event",
+    pj_event_custom_label: "Custom Event Name",
+    pj_event_custom_label_ph: "Ex: Meeting with their accountant, call with spouse, etc.",
+    pj_status_scheduled: "Scheduled",
+    pj_status_completed: "Completed",
+    pj_status_cancelled: "Cancelled",
+    pj_mark_completed: "Mark Completed",
+    pj_edit_event: "Edit",
+    pj_delete_event: "Delete",
+    pj_confirm_delete: "Delete this event?",
+    pj_modal_new_title: "New Event",
+    pj_modal_edit_title: "Edit Event",
+    pj_save: "Save",
+    pj_save_and_complete: "Save as Completed",
+    pj_widget_title: "Upcoming Team Events",
+    pj_widget_sub: "Visits, letters and follow-ups scheduled for the next 14 days",
+    pj_widget_today: "TODAY",
+    pj_widget_tomorrow: "TOMORROW",
   },
 };
 
@@ -1398,6 +1466,51 @@ const stageToStatus = (stage) => {
     case "active":     return "active";
     default: return "lead";
   }
+};
+
+// ------------------------- Prospect Journey -------------------------
+
+const JOURNEY_EVENT_TYPES = {
+  site_visit:        { label: "Visita al Sitio",       labelEn: "Site Visit",         icon: "MapPin",   color: "#4A6FA5", bg: "#E3EBF5" },
+  invitation_letter: { label: "Carta de Invitación",   labelEn: "Invitation Letter",  icon: "Mail",     color: "#C9A961", bg: "#F4EBD4" },
+  follow_up:         { label: "Seguimiento",            labelEn: "Follow-up",          icon: "Phone",    color: "#2D5E3E", bg: "#D4E6D8" },
+  custom:            { label: "Evento Personalizado",  labelEn: "Custom Event",       icon: "Calendar", color: "#1A2342", bg: "#D9DDE8" },
+};
+
+const JOURNEY_STATUS_CONFIG = {
+  scheduled: { label: "Programado", labelEn: "Scheduled", color: "#C9A961", bg: "#F4EBD4" },
+  completed: { label: "Completado", labelEn: "Completed", color: "#2D5E3E", bg: "#D4E6D8" },
+  cancelled: { label: "Cancelado",  labelEn: "Cancelled", color: "#B04B3F", bg: "#F3DDD9" },
+};
+
+const sortJourneyEvents = (events) => {
+  if (!events || events.length === 0) return [];
+  const today = new Date().toISOString().slice(0, 10);
+  return [...events].sort((a, b) => {
+    const aFinal = a.status === "completed" || a.status === "cancelled";
+    const bFinal = b.status === "completed" || b.status === "cancelled";
+    if (aFinal && bFinal) return (b.date || "").localeCompare(a.date || "");
+    if (!aFinal && !bFinal) return (a.date || "").localeCompare(b.date || "");
+    if (!aFinal) return a.date >= today ? -1 : 1;
+    return b.date >= today ? 1 : -1;
+  });
+};
+
+const getUpcomingEventsForDashboard = (clients) => {
+  const today = new Date().toISOString().slice(0, 10);
+  const twoWeeksFromNow = new Date(Date.now() + 14 * 86400000).toISOString().slice(0, 10);
+  const events = [];
+  clients.forEach(c => {
+    if (!c.prospectJourney || c.prospectJourney.length === 0) return;
+    c.prospectJourney.forEach(ev => {
+      if (ev.status !== "scheduled") return;
+      if (!ev.date) return;
+      if (ev.date >= today && ev.date <= twoWeeksFromNow) {
+        events.push({ ...ev, clientId: c.id, clientName: c.fullName || c.companyName || "" });
+      }
+    });
+  });
+  return events.sort((a, b) => (a.date || "").localeCompare(b.date || ""));
 };
 
 // Determine the primary contextual action for a client based on their state.
@@ -3740,7 +3853,7 @@ function StageTransitionModal({ open, client, targetStage, settings, onConfirm, 
   );
 }
 
-function ClientDetail({ client, onEdit, onEditTab, onAdvanceStage, onClose, onDelete, onGeneratePayment, onConfirmInstruction }) {
+function ClientDetail({ client, onEdit, onEditTab, onAdvanceStage, onClose, onDelete, onGeneratePayment, onConfirmInstruction, onSaveClient }) {
   const { t, lang } = useT();
   const settings = useSettings();
   const villaModels = settings.villaModels || DEFAULT_SETTINGS.villaModels;
@@ -3881,6 +3994,25 @@ function ClientDetail({ client, onEdit, onEditTab, onAdvanceStage, onClose, onDe
               />
             )}
           </div>
+        );
+      })()}
+
+      {/* Prospect Journey — visible always for early stages, read-only when contracted/active */}
+      {(() => {
+        const stage = getClientStage(client);
+        const hasJourney = client.prospectJourney && client.prospectJourney.length > 0;
+        const isEarlyStage = stage === "prospect" || stage === "interested";
+        if (!isEarlyStage && !hasJourney) return null;
+        return (
+          <ProspectJourneySection
+            client={client}
+            readOnly={!isEarlyStage}
+            onChange={(nextEvents) => {
+              if (onSaveClient) {
+                onSaveClient({ ...client, prospectJourney: nextEvents });
+              }
+            }}
+          />
         );
       })()}
 
@@ -4264,7 +4396,7 @@ function ClientDetail({ client, onEdit, onEditTab, onAdvanceStage, onClose, onDe
 // ------------------------- Dashboard -------------------------
 
 function Dashboard({ clients, onNewClient, onExport, onGoToClients, onGoToVillas }) {
-  const { t } = useT();
+  const { t, lang } = useT();
   const settings = useSettings();
   const totalLots = Object.keys(settings.lots || DEFAULT_SETTINGS.lots).length;
   const stats = useMemo(() => {
@@ -4405,6 +4537,65 @@ function Dashboard({ clients, onNewClient, onExport, onGoToClients, onGoToVillas
           )}
         </div>
       )}
+
+      {/* Upcoming Prospect Journey Events */}
+      {(() => {
+        const upcomingEvents = getUpcomingEventsForDashboard(clients);
+        if (upcomingEvents.length === 0) return null;
+        const ICON_MAP = { MapPin, Mail, Phone, Calendar };
+        const today = new Date().toISOString().slice(0, 10);
+        const tomorrow = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
+        return (
+          <div>
+            <SectionTitle subtitle={t("pj_widget_sub")}>{t("pj_widget_title")}</SectionTitle>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+              {upcomingEvents.slice(0, 6).map(ev => {
+                const typeCfg = JOURNEY_EVENT_TYPES[ev.type] || JOURNEY_EVENT_TYPES.custom;
+                const Icon = ICON_MAP[typeCfg.icon] || Calendar;
+                const dateLabel = ev.date === today ? t("pj_widget_today")
+                  : ev.date === tomorrow ? t("pj_widget_tomorrow")
+                  : fmtDate(ev.date);
+                const isUrgent = ev.date === today || ev.date === tomorrow;
+                return (
+                  <button key={ev.id} onClick={() => onGoToClients()}
+                    className="text-left p-4 bg-[#FDFBF6] border border-[#1A2342]/15 hover:border-[#1A2342]/40 transition-colors">
+                    <div className="flex items-start gap-3">
+                      <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0"
+                        style={{ backgroundColor: typeCfg.bg, border: `1.5px solid ${typeCfg.color}` }}>
+                        <Icon className="w-4 h-4" strokeWidth={1.8} style={{ color: typeCfg.color }} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-xs uppercase tracking-[0.1em] font-semibold"
+                            style={{ color: isUrgent ? "#B04B3F" : typeCfg.color, fontFamily: "'Manrope', sans-serif" }}>
+                            {dateLabel}
+                          </span>
+                          {ev.time && (
+                            <span className="text-xs text-[#1A2342]/60" style={{ fontFamily: "'Manrope', sans-serif" }}>
+                              · {ev.time}
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-sm text-[#1A2342] font-medium mt-1 truncate" style={{ fontFamily: "'Manrope', sans-serif" }}>
+                          {ev.type === "custom" && ev.customLabel ? ev.customLabel : (lang === "es" ? typeCfg.label : typeCfg.labelEn)}
+                        </div>
+                        <div className="text-[11px] text-[#1A2342]/60 mt-0.5 truncate" style={{ fontFamily: "'Manrope', sans-serif" }}>
+                          {ev.clientName}
+                        </div>
+                      </div>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+            {upcomingEvents.length > 6 && (
+              <div className="text-[11px] text-[#1A2342]/50 text-center mt-3" style={{ fontFamily: "'Manrope', sans-serif" }}>
+                +{upcomingEvents.length - 6} {lang === "es" ? "más" : "more"}
+              </div>
+            )}
+          </div>
+        );
+      })()}
 
       {/* Commissions Summary — shown only if there are brokers */}
       {stats.totalCommissions > 0 && (
@@ -5084,6 +5275,272 @@ function LotsEditor({ draft, setDraft, setSaved }) {
 }
 
 // ------------------------- Payment Instruction Generator -------------------------
+
+// ------------------------- Prospect Journey Section -------------------------
+
+function ProspectJourneySection({ client, onChange, readOnly = false }) {
+  const { t, lang } = useT();
+  const events = client?.prospectJourney || [];
+  const sortedEvents = sortJourneyEvents(events);
+  const [editingEvent, setEditingEvent] = useState(null);
+  const [modalOpen, setModalOpen] = useState(false);
+
+  const ICON_MAP = { MapPin, Mail, Phone, Calendar, Clock, Check, X };
+
+  const openNewEvent = (preselectedType = null) => {
+    setEditingEvent(preselectedType ? { type: preselectedType } : {});
+    setModalOpen(true);
+  };
+
+  const openEditEvent = (ev) => {
+    setEditingEvent(ev);
+    setModalOpen(true);
+  };
+
+  const closeModal = () => {
+    setModalOpen(false);
+    setEditingEvent(null);
+  };
+
+  const saveEvent = (eventData) => {
+    let nextEvents;
+    if (eventData.id) {
+      nextEvents = events.map(e => e.id === eventData.id ? eventData : e);
+    } else {
+      nextEvents = [...events, { ...eventData, id: uid() }];
+    }
+    onChange(nextEvents);
+    closeModal();
+  };
+
+  const deleteEvent = (id) => {
+    if (!confirm(t("pj_confirm_delete"))) return;
+    onChange(events.filter(e => e.id !== id));
+  };
+
+  const setEventStatus = (id, status) => {
+    onChange(events.map(e => e.id === id ? { ...e, status } : e));
+  };
+
+  const formatDateTime = (date, time) => {
+    if (!date) return "—";
+    const dateStr = fmtDate(date);
+    return time ? `${dateStr} · ${time}` : dateStr;
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-start justify-between gap-3 flex-wrap">
+        <div>
+          <h3 className="text-[#1A2342]" style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: "1.5rem", fontWeight: 500 }}>
+            {t("pj_section")}
+          </h3>
+          <p className="text-sm text-[#1A2342]/60 mt-0.5" style={{ fontFamily: "'Manrope', sans-serif" }}>
+            {t("pj_section_sub")}
+          </p>
+        </div>
+        {!readOnly && events.length > 0 && (
+          <Button onClick={() => openNewEvent()} variant="outline" size="sm" icon={Plus}>
+            {t("pj_add_event")}
+          </Button>
+        )}
+      </div>
+
+      {events.length === 0 ? (
+        <div className="p-6 bg-[#FDFBF6] border border-dashed border-[#1A2342]/20 text-center space-y-4">
+          <div className="text-sm text-[#1A2342]/60" style={{ fontFamily: "'Manrope', sans-serif" }}>
+            {t("pj_no_events")}
+          </div>
+          {!readOnly && (
+            <div className="flex flex-wrap gap-2 justify-center">
+              <Button onClick={() => openNewEvent("site_visit")} variant="outline" size="sm" icon={MapPin}>
+                {t("pj_add_site_visit")}
+              </Button>
+              <Button onClick={() => openNewEvent("invitation_letter")} variant="outline" size="sm" icon={Mail}>
+                {t("pj_add_letter")}
+              </Button>
+              <Button onClick={() => openNewEvent("follow_up")} variant="outline" size="sm" icon={Phone}>
+                {t("pj_add_follow_up")}
+              </Button>
+              <Button onClick={() => openNewEvent("custom")} variant="outline" size="sm" icon={Plus}>
+                {t("pj_add_custom")}
+              </Button>
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="relative">
+          <div className="absolute left-5 top-2 bottom-2 w-px bg-[#1A2342]/10" />
+
+          <div className="space-y-3">
+            {sortedEvents.map(ev => {
+              const typeCfg = JOURNEY_EVENT_TYPES[ev.type] || JOURNEY_EVENT_TYPES.custom;
+              const statusCfg = JOURNEY_STATUS_CONFIG[ev.status] || JOURNEY_STATUS_CONFIG.scheduled;
+              const Icon = ICON_MAP[typeCfg.icon] || Calendar;
+              const isFinal = ev.status === "completed" || ev.status === "cancelled";
+
+              return (
+                <div key={ev.id} className="relative pl-12">
+                  <div className="absolute left-0 top-1 w-10 h-10 rounded-full flex items-center justify-center"
+                    style={{ backgroundColor: typeCfg.bg, border: `2px solid ${typeCfg.color}` }}>
+                    <Icon className="w-4 h-4" strokeWidth={1.8} style={{ color: typeCfg.color }} />
+                  </div>
+
+                  <div className={`p-4 border ${isFinal ? "bg-[#FDFBF6]/60 border-[#1A2342]/10" : "bg-[#FDFBF6] border-[#1A2342]/15"}`}>
+                    <div className="flex items-start justify-between gap-2 flex-wrap">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-sm font-medium text-[#1A2342]" style={{ fontFamily: "'Manrope', sans-serif" }}>
+                            {ev.type === "custom" && ev.customLabel
+                              ? ev.customLabel
+                              : (lang === "es" ? typeCfg.label : typeCfg.labelEn)}
+                          </span>
+                          <span className="inline-block px-2 py-0.5 text-[9px] uppercase tracking-[0.1em]"
+                            style={{ color: statusCfg.color, backgroundColor: statusCfg.bg }}>
+                            {lang === "es" ? statusCfg.label : statusCfg.labelEn}
+                          </span>
+                        </div>
+                        <div className="text-[11px] text-[#1A2342]/60 mt-1" style={{ fontFamily: "'Manrope', sans-serif" }}>
+                          {formatDateTime(ev.date, ev.time)}
+                          {ev.performedBy && ` · ${ev.performedBy}`}
+                        </div>
+                        {ev.notes && (
+                          <div className="text-[12px] text-[#1A2342]/80 mt-2 whitespace-pre-wrap" style={{ fontFamily: "'Manrope', sans-serif" }}>
+                            {ev.notes}
+                          </div>
+                        )}
+                      </div>
+                      {!readOnly && (
+                        <div className="flex flex-col gap-1 items-end">
+                          {ev.status === "scheduled" && (
+                            <button onClick={() => setEventStatus(ev.id, "completed")}
+                              className="text-[10px] uppercase tracking-[0.1em] px-2 py-1 bg-[#2D5E3E] text-[#F5F1E8] hover:bg-[#1F4A30] transition-colors"
+                              style={{ fontFamily: "'Manrope', sans-serif" }}>
+                              ✓ {t("pj_mark_completed")}
+                            </button>
+                          )}
+                          <div className="flex gap-1">
+                            <button onClick={() => openEditEvent(ev)}
+                              className="p-1.5 text-[#1A2342]/50 hover:text-[#1A2342] hover:bg-[#1A2342]/5 transition-colors"
+                              title={t("pj_edit_event")}>
+                              <Edit3 className="w-3.5 h-3.5" strokeWidth={1.5} />
+                            </button>
+                            <button onClick={() => deleteEvent(ev.id)}
+                              className="p-1.5 text-[#1A2342]/40 hover:text-[#B04B3F] hover:bg-[#B04B3F]/5 transition-colors"
+                              title={t("pj_delete_event")}>
+                              <Trash2 className="w-3.5 h-3.5" strokeWidth={1.5} />
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {modalOpen && (
+        <JourneyEventModal initial={editingEvent} onSave={saveEvent} onClose={closeModal} />
+      )}
+    </div>
+  );
+}
+
+function JourneyEventModal({ initial, onSave, onClose }) {
+  const { t, lang } = useT();
+  const isEdit = !!initial?.id;
+  const [type, setType] = useState(initial?.type || "site_visit");
+  const [customLabel, setCustomLabel] = useState(initial?.customLabel || "");
+  const [date, setDate] = useState(initial?.date || todayISO());
+  const [time, setTime] = useState(initial?.time || "");
+  const [status, setStatus] = useState(initial?.status || "scheduled");
+  const [notes, setNotes] = useState(initial?.notes || "");
+  const [performedBy, setPerformedBy] = useState(initial?.performedBy || "");
+
+  const handleSave = (asCompleted) => {
+    if (type === "custom" && !customLabel.trim()) {
+      alert(lang === "es" ? "El nombre del evento es obligatorio" : "Event name is required");
+      return;
+    }
+    if (!date) {
+      alert(lang === "es" ? "La fecha es obligatoria" : "Date is required");
+      return;
+    }
+    onSave({
+      ...(initial || {}),
+      type,
+      customLabel: type === "custom" ? customLabel : undefined,
+      date,
+      time: time || undefined,
+      status: asCompleted ? "completed" : status,
+      notes: notes || undefined,
+      performedBy: performedBy || undefined,
+    });
+  };
+
+  const isES = lang === "es";
+
+  return (
+    <div className="fixed inset-0 bg-[#1A2342]/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <div className="bg-[#F5F1E8] border border-[#1A2342]/15 w-full max-w-xl max-h-[90vh] overflow-y-auto">
+        <div className="px-6 py-4 border-b border-[#1A2342]/10 flex items-center justify-between">
+          <h2 className="text-[#1A2342]" style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: "1.5rem", fontWeight: 500 }}>
+            {isEdit ? t("pj_modal_edit_title") : t("pj_modal_new_title")}
+          </h2>
+          <button onClick={onClose} className="p-1.5 hover:bg-[#1A2342]/10 transition-colors">
+            <X className="w-4 h-4 text-[#1A2342]/60" strokeWidth={1.5} />
+          </button>
+        </div>
+
+        <div className="p-6 space-y-4">
+          <Select label={t("pj_event_type")} value={type} onChange={setType}
+            options={Object.entries(JOURNEY_EVENT_TYPES).map(([k, c]) => ({
+              v: k,
+              l: isES ? c.label : c.labelEn,
+            }))} required />
+
+          {type === "custom" && (
+            <Input label={t("pj_event_custom_label")} value={customLabel} onChange={setCustomLabel}
+              placeholder={t("pj_event_custom_label_ph")} required />
+          )}
+
+          <div className="grid grid-cols-2 gap-3">
+            <Input label={t("pj_event_date")} type="date" value={date} onChange={setDate} required />
+            <Input label={t("pj_event_time")} type="time" value={time} onChange={setTime} />
+          </div>
+
+          <Select label={t("pj_event_status")} value={status} onChange={setStatus}
+            options={[
+              { v: "scheduled", l: t("pj_status_scheduled") },
+              { v: "completed", l: t("pj_status_completed") },
+              { v: "cancelled", l: t("pj_status_cancelled") },
+            ]} />
+
+          <Input label={t("pj_event_performed_by")} value={performedBy} onChange={setPerformedBy}
+            placeholder={t("pj_event_performed_by_ph")} />
+
+          <Input label={t("pj_event_notes")} textarea rows={4} value={notes} onChange={setNotes}
+            placeholder={t("pj_event_notes_ph")} />
+        </div>
+
+        <div className="px-6 py-4 border-t border-[#1A2342]/10 flex justify-end gap-2 flex-wrap">
+          <Button onClick={onClose} variant="ghost">{t("cancel")}</Button>
+          {status !== "completed" && status !== "cancelled" && (
+            <Button onClick={() => handleSave(true)} variant="outline" icon={Check}>
+              {t("pj_save_and_complete")}
+            </Button>
+          )}
+          <Button onClick={() => handleSave(false)} variant="primary" icon={Check}>
+            {t("pj_save")}
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 // ------------------------- Instruction Confirmation View -------------------------
 // Shown after user prints/sends a payment instruction.
@@ -6650,6 +7107,7 @@ export default function App() {
               onDelete={handleDelete}
               onGeneratePayment={(c) => setPaymentInstructionFor(c)}
               onConfirmInstruction={(instructionId) => setConfirmInstructionFor({ client: selectedClient, instructionId })}
+              onSaveClient={handleSave}
             />
           </div>
         ) : view === "dashboard" ? (
