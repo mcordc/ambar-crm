@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback, useContext, createContext } from "react";
 import * as XLSX from "xlsx";
 import { createClient } from "@supabase/supabase-js";
+import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 import {
   Users, Home, DollarSign, FileDown, Plus, Search, Edit3, Trash2,
   X, Check, Download, Upload, Filter, ChevronDown, ChevronRight,
@@ -456,6 +457,30 @@ const TRANSLATIONS = {
     lbl_commission_progress_note: "La comisión se gana proporcionalmente según el cliente paga",
     settings_default_commission: "% Comisión Default para Brokers",
     settings_default_commission_sub: "Porcentaje por defecto al asignar un broker a un cliente (editable caso por caso)",
+
+    // Branding & fonts
+    settings_branding: "Marca y Apariencia",
+    settings_branding_sub: "Logo, nombre y tipografías que se usan en la interfaz y en los documentos generados",
+    branding_logo: "Logo de la Empresa",
+    branding_logo_help: "PNG o JPG. Se usa en la barra superior y en el encabezado de los documentos (instructivos de pago, formulario KYC).",
+    branding_upload: "Subir Logo",
+    branding_remove: "Quitar Logo",
+    branding_logo_invalid: "Formato no válido. Sube una imagen PNG o JPG.",
+    branding_display_name: "Nombre a Mostrar",
+    branding_display_name_help: "Texto junto al logo (deja vacío para mostrar solo el logo)",
+    branding_tagline: "Subtítulo / Eslogan",
+    branding_fonts: "Tipografías",
+    branding_font_heading: "Fuente de Títulos",
+    branding_font_body: "Fuente de Texto",
+    branding_preview: "Vista previa",
+    branding_preview_heading: "Títulos — AMBAR Longevity Estate",
+    branding_preview_body: "Texto — La información del cliente aparecerá con esta fuente en la interfaz y los documentos.",
+
+    // KYC fillable PDF
+    kyc_pdf_title: "Formulario KYC en PDF (rellenable)",
+    kyc_pdf_help: "Genera un PDF con campos editables, pre-llenado con los datos actuales, para que el cliente lo complete él mismo (digital o impreso).",
+    kyc_pdf_generate: "Generar PDF KYC",
+    kyc_pdf_error: "No se pudo generar el PDF. Intenta de nuevo.",
     // Excel
     excel_commission_sheet: "Comisiones",
     // Payment Plan
@@ -1064,6 +1089,30 @@ const TRANSLATIONS = {
     lbl_commission_progress_note: "Commission is earned proportionally as client pays",
     settings_default_commission: "Default Broker Commission %",
     settings_default_commission_sub: "Default percentage when assigning a broker to a client (editable per case)",
+
+    // Branding & fonts
+    settings_branding: "Branding & Appearance",
+    settings_branding_sub: "Logo, name and fonts used across the interface and generated documents",
+    branding_logo: "Company Logo",
+    branding_logo_help: "PNG or JPG. Used in the top bar and in document headers (payment instructions, KYC form).",
+    branding_upload: "Upload Logo",
+    branding_remove: "Remove Logo",
+    branding_logo_invalid: "Invalid format. Please upload a PNG or JPG image.",
+    branding_display_name: "Display Name",
+    branding_display_name_help: "Text shown next to the logo (leave empty to show the logo only)",
+    branding_tagline: "Tagline / Subtitle",
+    branding_fonts: "Fonts",
+    branding_font_heading: "Heading Font",
+    branding_font_body: "Body Font",
+    branding_preview: "Preview",
+    branding_preview_heading: "Headings — AMBAR Longevity Estate",
+    branding_preview_body: "Body — Client information will use this font across the interface and documents.",
+
+    // KYC fillable PDF
+    kyc_pdf_title: "KYC Form as Fillable PDF",
+    kyc_pdf_help: "Generates a PDF with editable fields, pre-filled with the current data, so the client can complete it themselves (digitally or printed).",
+    kyc_pdf_generate: "Generate KYC PDF",
+    kyc_pdf_error: "Could not generate the PDF. Please try again.",
     // Excel
     excel_commission_sheet: "Commissions",
     // Payment Plan
@@ -1303,7 +1352,10 @@ const TRANSLATIONS = {
 const LanguageContext = createContext({ lang: "es", t: (k) => k, setLang: () => {} });
 const useT = () => useContext(LanguageContext);
 
-const SettingsContext = createContext(DEFAULT_SETTINGS);
+// Default value is only a fallback — the app always renders consumers inside a
+// Provider. Using null avoids referencing DEFAULT_SETTINGS before its
+// declaration (a TDZ error that breaks `vite dev`, masked in prod builds).
+const SettingsContext = createContext(null);
 const useSettings = () => useContext(SettingsContext);
 
 // ------------------------- Utilities -------------------------
@@ -2017,7 +2069,71 @@ function saveLanguage(lang) {
   } catch {}
 }
 
+// Curated Google Fonts (weights verified to exist for each family)
+const FONT_LIBRARY = {
+  heading: [
+    { family: "Cormorant Garamond", weights: "300;400;500;600", fallback: "serif" },
+    { family: "Playfair Display",   weights: "400;500;600;700", fallback: "serif" },
+    { family: "EB Garamond",        weights: "400;500;600;700", fallback: "serif" },
+    { family: "Lora",               weights: "400;500;600;700", fallback: "serif" },
+    { family: "Cinzel",             weights: "400;500;600",     fallback: "serif" },
+    { family: "Marcellus",          weights: "400",             fallback: "serif" },
+    { family: "Montserrat",         weights: "300;400;500;600;700", fallback: "sans-serif" },
+    { family: "Manrope",            weights: "300;400;500;600;700", fallback: "sans-serif" },
+  ],
+  body: [
+    { family: "Manrope",     weights: "300;400;500;600;700", fallback: "sans-serif" },
+    { family: "Inter",       weights: "300;400;500;600;700", fallback: "sans-serif" },
+    { family: "Montserrat",  weights: "300;400;500;600;700", fallback: "sans-serif" },
+    { family: "Open Sans",   weights: "300;400;500;600;700", fallback: "sans-serif" },
+    { family: "Work Sans",   weights: "300;400;500;600;700", fallback: "sans-serif" },
+    { family: "Poppins",     weights: "300;400;500;600;700", fallback: "sans-serif" },
+    { family: "Nunito Sans", weights: "300;400;600;700",     fallback: "sans-serif" },
+  ],
+};
+
+const DEFAULT_BRANDING = {
+  logoDataUrl: "",
+  displayName: "AMBAR",
+  tagline: "Longevity Estate",
+  fontHeading: "Cormorant Garamond",
+  fontBody: "Manrope",
+};
+
+function getBranding(settings) {
+  return { ...DEFAULT_BRANDING, ...(settings?.branding || {}) };
+}
+
+function fontEntry(kind, family) {
+  return FONT_LIBRARY[kind].find(f => f.family === family)
+    || FONT_LIBRARY[kind].find(f => f.family === (kind === "heading" ? DEFAULT_BRANDING.fontHeading : DEFAULT_BRANDING.fontBody));
+}
+
+function headingStack(branding) {
+  const f = fontEntry("heading", branding.fontHeading);
+  return `'${f.family}', ${f.fallback}`;
+}
+
+function bodyStack(branding) {
+  const f = fontEntry("body", branding.fontBody);
+  return `'${f.family}', ${f.fallback}`;
+}
+
+function fontImportUrl(branding) {
+  const h = fontEntry("heading", branding.fontHeading);
+  const b = fontEntry("body", branding.fontBody);
+  const parts = [`family=${h.family.replace(/ /g, "+")}:wght@${h.weights}`];
+  if (b.family !== h.family) parts.push(`family=${b.family.replace(/ /g, "+")}:wght@${b.weights}`);
+  return `https://fonts.googleapis.com/css2?${parts.join("&")}&display=swap`;
+}
+
+// CSS injected both in the app and in print windows so var(--font-*) resolves everywhere
+function fontRootCss(branding) {
+  return `:root { --font-heading: ${headingStack(branding)}; --font-body: ${bodyStack(branding)}; }`;
+}
+
 const DEFAULT_SETTINGS = {
+  branding: { ...DEFAULT_BRANDING },
   company: {
     legalName: "Cumbre Azul Company SRL",
     rnc: "",
@@ -2092,6 +2208,284 @@ async function storageSet(key, value) {
     console.error("Storage set failed:", e);
     return false;
   }
+}
+
+// ------------------------- KYC Fillable PDF -------------------------
+
+function dataUrlToBytes(dataUrl) {
+  const base64 = dataUrl.split(",")[1];
+  const bin = atob(base64);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return bytes;
+}
+
+// Generates a fillable (AcroForm) KYC PDF pre-filled with the client's current
+// data. Empty fields stay editable so the client can complete the form
+// digitally (Acrobat, browser, etc.) or by hand after printing.
+async function generateKycPdf(client, settings, lang) {
+  const branding = getBranding(settings);
+  const company = settings?.company || DEFAULT_SETTINGS.company;
+  const NAVY = rgb(0.102, 0.137, 0.259);       // #1A2342
+  const NAVY_60 = rgb(0.46, 0.48, 0.56);
+  const CREAM = rgb(0.992, 0.984, 0.965);      // #FDFBF6
+  const BORDER = rgb(0.75, 0.76, 0.8);
+
+  const pdfDoc = await PDFDocument.create();
+  const helv = await pdfDoc.embedFont(StandardFonts.Helvetica);
+  const helvBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+  const form = pdfDoc.getForm();
+
+  const PAGE_W = 595.28, PAGE_H = 841.89;      // A4
+  const MARGIN = 48;
+  const CONTENT_W = PAGE_W - MARGIN * 2;
+  let page, y, fieldN = 0;
+
+  const drawFooter = (p) => {
+    const txt = [company.legalName, company.website].filter(Boolean).join("  ·  ");
+    if (txt) p.drawText(txt, { x: MARGIN, y: 26, size: 6.5, font: helv, color: NAVY_60 });
+    p.drawText(lang === "es" ? "Formulario KYC — Ley No. 155-17" : "KYC Form — Law No. 155-17",
+      { x: PAGE_W - MARGIN - 130, y: 26, size: 6.5, font: helv, color: NAVY_60 });
+  };
+
+  const newPage = () => {
+    page = pdfDoc.addPage([PAGE_W, PAGE_H]);
+    drawFooter(page);
+    y = PAGE_H - MARGIN;
+  };
+
+  const ensure = (h) => { if (y - h < 48) newPage(); };
+
+  const sectionTitle = (es, en) => {
+    ensure(88); // title plus at least one field row, so titles never orphan at a page bottom
+    y -= 10;
+    page.drawText(`${es.toUpperCase()}  /  ${en.toUpperCase()}`, { x: MARGIN, y, size: 8, font: helvBold, color: NAVY });
+    y -= 5;
+    page.drawLine({ start: { x: MARGIN, y }, end: { x: MARGIN + CONTENT_W, y }, thickness: 0.75, color: NAVY });
+    y -= 14;
+  };
+
+  // One row of fillable fields. items: [{ label, value, flex, multiline, height }]
+  const fieldRow = (items) => {
+    const GAP = 12;
+    const totalFlex = items.reduce((s, i) => s + (i.flex || 1), 0);
+    const rowH = Math.max(...items.map(i => i.height || 16)) + 10;
+    ensure(rowH + 8);
+    let x = MARGIN;
+    for (const item of items) {
+      const w = (CONTENT_W - GAP * (items.length - 1)) * ((item.flex || 1) / totalFlex);
+      const h = item.height || 16;
+      page.drawText(item.label, { x, y: y - 7, size: 6.5, font: helv, color: NAVY_60 });
+      const tf = form.createTextField(`kyc_${fieldN++}`);
+      if (item.value) tf.setText(String(item.value));
+      if (item.multiline) tf.enableMultiline();
+      tf.addToPage(page, {
+        x, y: y - 10 - h, width: w, height: h,
+        borderWidth: 0.75, borderColor: BORDER, backgroundColor: CREAM, textColor: NAVY, font: helv,
+      });
+      tf.setFontSize(9);
+      x += w + GAP;
+    }
+    y -= rowH + 8;
+  };
+
+  const checkboxRow = (items) => {
+    ensure(22);
+    let x = MARGIN;
+    for (const item of items) {
+      const cb = form.createCheckBox(`kyc_${fieldN++}`);
+      cb.addToPage(page, { x, y: y - 11, width: 11, height: 11, borderWidth: 1, borderColor: NAVY, backgroundColor: CREAM });
+      if (item.checked) cb.check();
+      page.drawText(item.label, { x: x + 16, y: y - 9, size: 8.5, font: helv, color: NAVY });
+      x += 16 + helv.widthOfTextAtSize(item.label, 8.5) + 28;
+    }
+    y -= 24;
+  };
+
+  newPage();
+
+  // ---- Header: logo + brand + company ----
+  const headerTop = y;
+  let logoBottom = y;
+  if (branding.logoDataUrl && /^data:image\/(png|jpe?g);base64,/.test(branding.logoDataUrl)) {
+    try {
+      const bytes = dataUrlToBytes(branding.logoDataUrl);
+      const img = branding.logoDataUrl.startsWith("data:image/png")
+        ? await pdfDoc.embedPng(bytes) : await pdfDoc.embedJpg(bytes);
+      const h = 34;
+      const w = (img.width / img.height) * h;
+      page.drawImage(img, { x: MARGIN, y: y - h, width: Math.min(w, 130), height: h });
+      logoBottom = y - h;
+    } catch { /* logo corrupt — continue without it */ }
+  }
+  if (branding.displayName) {
+    const nameY = logoBottom < headerTop ? logoBottom - 14 : y - 16;
+    page.drawText(branding.displayName, { x: MARGIN, y: nameY, size: 15, font: helvBold, color: NAVY });
+    if (branding.tagline) page.drawText(branding.tagline.toUpperCase(), { x: MARGIN, y: nameY - 10, size: 6.5, font: helv, color: NAVY_60 });
+    logoBottom = nameY - (branding.tagline ? 16 : 6);
+  }
+  // Company block right-aligned
+  const rightLines = [company.legalName, company.rnc ? `RNC: ${company.rnc}` : null, company.address, company.email, company.phone].filter(Boolean);
+  let ry = headerTop - 8;
+  for (const line of rightLines) {
+    const w = helv.widthOfTextAtSize(line, 7);
+    page.drawText(line, { x: PAGE_W - MARGIN - w, y: ry, size: 7, font: helv, color: NAVY_60 });
+    ry -= 10;
+  }
+  y = Math.min(logoBottom, ry) - 8;
+  page.drawLine({ start: { x: MARGIN, y }, end: { x: MARGIN + CONTENT_W, y }, thickness: 1.5, color: NAVY });
+  y -= 22;
+
+  // ---- Title ----
+  page.drawText(lang === "es" ? "Formulario de Conocimiento del Cliente (KYC)" : "Know Your Customer (KYC) Form",
+    { x: MARGIN, y, size: 16, font: helvBold, color: NAVY });
+  y -= 14;
+  page.drawText(lang === "es"
+    ? "Debida Diligencia del Cliente conforme a la Ley No. 155-17 / Customer Due Diligence"
+    : "Customer Due Diligence pursuant to Law No. 155-17 / Debida Diligencia del Cliente",
+    { x: MARGIN, y, size: 8, font: helv, color: NAVY_60 });
+  y -= 8;
+
+  // ---- Buyer type ----
+  sectionTitle("Tipo de Comprador", "Buyer Type");
+  checkboxRow([
+    { label: "Persona Física / Individual", checked: client.type === "individual" },
+    { label: "Persona Jurídica / Entity", checked: client.type === "entity" },
+  ]);
+
+  // ---- Identification ----
+  if (client.type === "entity") {
+    sectionTitle("Datos Corporativos", "Corporate Information");
+    fieldRow([{ label: "Razón Social Completa / Full Legal Name", value: client.companyName, flex: 1 }]);
+    fieldRow([
+      { label: "RNC (Rep. Dom.)", value: client.rnc },
+      { label: "ID Fiscal del Negocio (EIN/Otro) / Business Tax ID", value: client.businessTaxId },
+    ]);
+    fieldRow([
+      { label: "Fecha de Constitución / Incorporation Date", value: client.incorporationDate },
+      { label: "País de Constitución / Country of Incorporation", value: client.incorporationCountry },
+    ]);
+    fieldRow([
+      { label: "Actividad Comercial Principal / Primary Business Activity", value: client.businessActivity, flex: 2 },
+      { label: "Website", value: client.website },
+    ]);
+    sectionTitle("Representante Legal", "Legal Representative");
+    fieldRow([
+      { label: "Nombre Completo / Full Name", value: client.legalRepName },
+      { label: "Nacionalidad / Nationality", value: client.legalRepNationality },
+    ]);
+    fieldRow([
+      { label: "Número de ID / ID Number", value: client.legalRepId },
+      { label: "Cargo / Position", value: client.legalRepPosition },
+    ]);
+  } else {
+    sectionTitle("Datos Personales", "Personal Information");
+    fieldRow([
+      { label: "Nombre Completo / Full Name", value: client.fullName, flex: 2 },
+      { label: "Nacionalidad / Nationality", value: client.nationality },
+    ]);
+    fieldRow([
+      { label: "Tipo de Documento / Document Type", value: ID_TYPES.find(i => i.v === client.idType)?.l },
+      { label: "Número de ID / ID Number", value: client.idNumber },
+      { label: "País de Emisión / Country of Issue", value: client.countryOfIssue },
+    ]);
+    fieldRow([
+      { label: "Vencimiento ID / ID Expiration", value: client.idExpiration },
+      { label: "ID Fiscal (SSN) / Tax ID", value: client.taxId },
+      { label: "Fecha de Nacimiento / Date of Birth", value: client.dateOfBirth },
+    ]);
+    fieldRow([
+      { label: "Lugar de Nacimiento / Place of Birth", value: client.placeOfBirth },
+      { label: "Estado Civil / Marital Status", value: client.maritalStatus },
+    ]);
+    fieldRow([
+      { label: "Nombre del Cónyuge / Spouse Name", value: client.spouseName },
+      { label: "ID del Cónyuge / Spouse ID", value: client.spouseId },
+    ]);
+    fieldRow([
+      { label: "Profesión u Ocupación / Profession", value: client.profession },
+      { label: "Empresa donde labora / Employer", value: client.employer },
+      { label: "Cargo / Position", value: client.position },
+    ]);
+  }
+
+  // ---- Contact ----
+  sectionTitle("Información de Contacto", "Contact Information");
+  fieldRow([
+    { label: "Email", value: client.email },
+    { label: "Teléfono Principal / Primary Phone", value: client.phone },
+    { label: "Teléfono Secundario / Secondary Phone", value: client.phoneSecondary },
+  ]);
+  fieldRow([{ label: "Dirección Completa / Full Address", value: client.address, height: 32, multiline: true }]);
+
+  // ---- Property ----
+  const villaModels = settings?.villaModels || DEFAULT_SETTINGS.villaModels;
+  sectionTitle("Propiedad de Interés", "Property of Interest");
+  fieldRow([
+    { label: "Villa / Lote No.", value: client.lotNumber },
+    { label: "Modelo / Model", value: villaModels[client.villaModel]?.name, flex: 2 },
+  ]);
+
+  // ---- AML / PEP ----
+  sectionTitle("Persona Expuesta Políticamente (PEP)", "Politically Exposed Person");
+  checkboxRow([
+    { label: lang === "es" ? "¿Es usted o un familiar cercano una PEP?  SÍ" : "Are you or a close relative a PEP?  YES", checked: !!client.isPep },
+    { label: "NO", checked: client.isPep === false },
+  ]);
+  fieldRow([
+    { label: "Nombre de la PEP / PEP Name", value: client.pepName },
+    { label: "Cargo / Position", value: client.pepPosition },
+    { label: "Relación / Relationship", value: client.pepRelationship },
+  ]);
+
+  sectionTitle("Origen de los Fondos", "Source of Funds");
+  fieldRow([{ label: lang === "es" ? "Describa el origen de los fondos para esta transacción" : "Describe the source of funds for this transaction", value: client.sourceOfFunds, height: 46, multiline: true }]);
+
+  sectionTitle("Beneficiarios Finales (UBO)", "Ultimate Beneficial Owners");
+  const ubos = (client.ubos || []).slice(0, 4);
+  for (let i = 0; i < 4; i++) {
+    const u = ubos[i] || {};
+    fieldRow([
+      { label: i === 0 ? "Nombre / Name" : " ", value: u.name, flex: 4 },
+      { label: i === 0 ? "Nacionalidad / Nationality" : " ", value: u.nationality, flex: 3 },
+      { label: i === 0 ? "No. ID" : " ", value: u.idNumber, flex: 3 },
+      { label: i === 0 ? "%" : " ", value: u.percentage, flex: 1 },
+    ]);
+  }
+
+  // ---- Declaration & signature ----
+  sectionTitle("Declaración y Firma", "Declaration & Signature");
+  ensure(96);
+  const decl = lang === "es"
+    ? ["Declaro que la información suministrada en este formulario es verdadera, exacta y completa, y autorizo su",
+       "verificación conforme a la Ley No. 155-17 contra el Lavado de Activos. / I declare that the information provided",
+       "is true, accurate and complete, and I authorize its verification pursuant to Law No. 155-17."]
+    : ["I declare that the information provided in this form is true, accurate and complete, and I authorize its",
+       "verification pursuant to Law No. 155-17 against Money Laundering. / Declaro que la información suministrada",
+       "es verdadera, exacta y completa, y autorizo su verificación conforme a la Ley No. 155-17."];
+  for (const line of decl) {
+    page.drawText(line, { x: MARGIN, y, size: 7.5, font: helv, color: NAVY });
+    y -= 10;
+  }
+  y -= 34;
+  const sigW = (CONTENT_W - 40) / 2;
+  page.drawLine({ start: { x: MARGIN, y }, end: { x: MARGIN + sigW, y }, thickness: 0.75, color: NAVY });
+  page.drawText("Firma del Cliente / Client Signature", { x: MARGIN, y: y - 10, size: 7, font: helv, color: NAVY_60 });
+  page.drawLine({ start: { x: MARGIN + sigW + 40, y }, end: { x: MARGIN + CONTENT_W, y }, thickness: 0.75, color: NAVY });
+  page.drawText("Fecha / Date", { x: MARGIN + sigW + 40, y: y - 10, size: 7, font: helv, color: NAVY_60 });
+
+  form.updateFieldAppearances(helv);
+  const bytes = await pdfDoc.save();
+  const blob = new Blob([bytes], { type: "application/pdf" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  const who = (client.fullName || client.companyName || "cliente").replace(/[^\w\sÁÉÍÓÚÑáéíóúñ-]/g, "").trim().replace(/\s+/g, "_");
+  a.href = url;
+  a.download = `KYC_${who}_${new Date().toISOString().slice(0, 10)}.pdf`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 5000);
 }
 
 // ------------------------- Excel Export -------------------------
@@ -2294,7 +2688,7 @@ const Button = ({ children, onClick, variant = "primary", size = "md", type = "b
   return (
     <button type={type} onClick={onClick} disabled={disabled}
       className={`inline-flex items-center justify-center gap-2 font-medium tracking-wide transition-all duration-150 disabled:opacity-40 disabled:cursor-not-allowed ${variants[variant]} ${sizes[size]} ${className}`}
-      style={{ fontFamily: "'Manrope', sans-serif" }}>
+      style={{ fontFamily: "var(--font-body)" }}>
       {Icon && <Icon className="w-4 h-4" strokeWidth={1.8} />}
       {children}
     </button>
@@ -2335,7 +2729,7 @@ function ActionMenu({ items }) {
                     ? "text-[#B04B3F] hover:bg-[#B04B3F]/5"
                     : "text-[#1A2342] hover:bg-[#1A2342]/5"
                 } disabled:opacity-40 disabled:cursor-not-allowed`}
-                style={{ fontFamily: "'Manrope', sans-serif" }}>
+                style={{ fontFamily: "var(--font-body)" }}>
                 {Icon && <Icon className="w-3.5 h-3.5" strokeWidth={1.8} />}
                 <span>{item.label}</span>
               </button>
@@ -2350,7 +2744,7 @@ function ActionMenu({ items }) {
 const Input = ({ label, value, onChange, type = "text", placeholder, required, className = "", textarea, rows = 3, disabled, ...rest }) => (
   <div className={className}>
     {label && (
-      <label className="block text-[10px] uppercase tracking-[0.12em] text-[#1A2342]/60 mb-1.5" style={{ fontFamily: "'Manrope', sans-serif" }}>
+      <label className="block text-[10px] uppercase tracking-[0.12em] text-[#1A2342]/60 mb-1.5" style={{ fontFamily: "var(--font-body)" }}>
         {label} {required && <span className="text-[#B04B3F]">*</span>}
       </label>
     )}
@@ -2358,13 +2752,13 @@ const Input = ({ label, value, onChange, type = "text", placeholder, required, c
       <textarea value={value || ""} onChange={e => onChange(e.target.value)} placeholder={placeholder} rows={rows}
         disabled={disabled}
         className={`w-full px-3 py-2 border focus:outline-none text-sm text-[#1A2342] placeholder:text-[#1A2342]/30 ${disabled ? "bg-[#1A2342]/5 border-[#1A2342]/10 cursor-not-allowed text-[#1A2342]/70" : "bg-[#FDFBF6] border-[#1A2342]/15 focus:border-[#4A6FA5]"}`}
-        style={{ fontFamily: "'Manrope', sans-serif" }}
+        style={{ fontFamily: "var(--font-body)" }}
         {...rest} />
     ) : (
       <input type={type} value={value || ""} onChange={e => onChange(e.target.value)} placeholder={placeholder}
         disabled={disabled}
         className={`w-full px-3 py-2 border focus:outline-none text-sm text-[#1A2342] placeholder:text-[#1A2342]/30 ${disabled ? "bg-[#1A2342]/5 border-[#1A2342]/10 cursor-not-allowed text-[#1A2342]/70" : "bg-[#FDFBF6] border-[#1A2342]/15 focus:border-[#4A6FA5]"}`}
-        style={{ fontFamily: "'Manrope', sans-serif" }}
+        style={{ fontFamily: "var(--font-body)" }}
         {...rest} />
     )}
   </div>
@@ -2373,13 +2767,13 @@ const Input = ({ label, value, onChange, type = "text", placeholder, required, c
 const Select = ({ label, value, onChange, options, required, placeholder = "—", className = "", disabled }) => (
   <div className={className}>
     {label && (
-      <label className="block text-[10px] uppercase tracking-[0.12em] text-[#1A2342]/60 mb-1.5" style={{ fontFamily: "'Manrope', sans-serif" }}>
+      <label className="block text-[10px] uppercase tracking-[0.12em] text-[#1A2342]/60 mb-1.5" style={{ fontFamily: "var(--font-body)" }}>
         {label} {required && <span className="text-[#B04B3F]">*</span>}
       </label>
     )}
     <select value={value || ""} onChange={e => onChange(e.target.value)} disabled={disabled}
       className={`w-full px-3 py-2 border focus:outline-none text-sm text-[#1A2342] ${disabled ? "bg-[#1A2342]/5 border-[#1A2342]/10 cursor-not-allowed text-[#1A2342]/70" : "bg-[#FDFBF6] border-[#1A2342]/15 focus:border-[#4A6FA5]"}`}
-      style={{ fontFamily: "'Manrope', sans-serif" }}>
+      style={{ fontFamily: "var(--font-body)" }}>
       <option value="">{placeholder}</option>
       {options.map(o => (
         <option key={o.v ?? o} value={o.v ?? o}>{o.l ?? o}</option>
@@ -2394,23 +2788,23 @@ const Checkbox = ({ label, checked, onChange, className = "" }) => (
       className={`w-4 h-4 border flex items-center justify-center transition-colors ${checked ? "bg-[#1A2342] border-[#1A2342]" : "bg-[#FDFBF6] border-[#1A2342]/30"}`}>
       {checked && <Check className="w-3 h-3 text-[#F5F1E8]" strokeWidth={3} />}
     </button>
-    <span className="text-sm text-[#1A2342]" style={{ fontFamily: "'Manrope', sans-serif" }}>{label}</span>
+    <span className="text-sm text-[#1A2342]" style={{ fontFamily: "var(--font-body)" }}>{label}</span>
   </label>
 );
 
 const Badge = ({ children, color = "#1A2342", bg = "#D9DDE8" }) => (
   <span className="inline-flex items-center px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] font-medium"
-    style={{ color, backgroundColor: bg, fontFamily: "'Manrope', sans-serif" }}>
+    style={{ color, backgroundColor: bg, fontFamily: "var(--font-body)" }}>
     {children}
   </span>
 );
 
 const SectionTitle = ({ children, subtitle, className = "" }) => (
   <div className={`border-b border-[#1A2342]/10 pb-2 mb-4 ${className}`}>
-    <h3 className="text-xs uppercase tracking-[0.2em] text-[#1A2342]/70" style={{ fontFamily: "'Manrope', sans-serif" }}>
+    <h3 className="text-xs uppercase tracking-[0.2em] text-[#1A2342]/70" style={{ fontFamily: "var(--font-body)" }}>
       {children}
     </h3>
-    {subtitle && <p className="text-[11px] text-[#1A2342]/50 mt-0.5" style={{ fontFamily: "'Manrope', sans-serif" }}>{subtitle}</p>}
+    {subtitle && <p className="text-[11px] text-[#1A2342]/50 mt-0.5" style={{ fontFamily: "var(--font-body)" }}>{subtitle}</p>}
   </div>
 );
 
@@ -2422,7 +2816,7 @@ const Modal = ({ open, onClose, children, title, size = "lg" }) => {
       <div className={`w-full ${widths[size]} max-h-[92vh] bg-[#F5F1E8] border border-[#1A2342]/20 shadow-2xl flex flex-col`}
         onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between px-6 py-4 border-b border-[#1A2342]/10">
-          <h2 className="text-lg tracking-wide text-[#1A2342]" style={{ fontFamily: "'Cormorant Garamond', serif", fontWeight: 500, letterSpacing: "0.04em" }}>
+          <h2 className="text-lg tracking-wide text-[#1A2342]" style={{ fontFamily: "var(--font-heading)", fontWeight: 500, letterSpacing: "0.04em" }}>
             {title}
           </h2>
           <button onClick={onClose} className="p-1 hover:bg-[#1A2342]/10 transition-colors">
@@ -2453,8 +2847,8 @@ const EmptyState = ({ icon: Icon, title, subtitle, action }) => (
     <div className="w-14 h-14 rounded-full bg-[#1A2342]/5 flex items-center justify-center mb-4">
       <Icon className="w-6 h-6 text-[#1A2342]/40" strokeWidth={1.5} />
     </div>
-    <h3 className="text-[#1A2342] mb-1" style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: "1.25rem" }}>{title}</h3>
-    {subtitle && <p className="text-sm text-[#1A2342]/60 mb-4 max-w-sm" style={{ fontFamily: "'Manrope', sans-serif" }}>{subtitle}</p>}
+    <h3 className="text-[#1A2342] mb-1" style={{ fontFamily: "var(--font-heading)", fontSize: "1.25rem" }}>{title}</h3>
+    {subtitle && <p className="text-sm text-[#1A2342]/60 mb-4 max-w-sm" style={{ fontFamily: "var(--font-body)" }}>{subtitle}</p>}
     {action}
   </div>
 );
@@ -2549,7 +2943,7 @@ function PaymentPlanSection({ clientId, villaTotal, plan, onPlanChange }) {
 
       {installments.length === 0 ? (
         <div className="p-6 text-center text-sm text-[#1A2342]/50 bg-[#FDFBF6] border border-dashed border-[#1A2342]/20"
-          style={{ fontFamily: "'Manrope', sans-serif" }}>
+          style={{ fontFamily: "var(--font-body)" }}>
           {t("plan_no_plan")}
         </div>
       ) : (
@@ -2557,7 +2951,7 @@ function PaymentPlanSection({ clientId, villaTotal, plan, onPlanChange }) {
           {/* Installments table */}
           <div className="border border-[#1A2342]/10 overflow-x-auto">
             <div className="min-w-[900px]">
-              <div className="grid grid-cols-24 gap-2 px-3 py-2 bg-[#1A2342]/5 text-[10px] uppercase tracking-[0.12em] text-[#1A2342]/60" style={{ fontFamily: "'Manrope', sans-serif" }}>
+              <div className="grid grid-cols-24 gap-2 px-3 py-2 bg-[#1A2342]/5 text-[10px] uppercase tracking-[0.12em] text-[#1A2342]/60" style={{ fontFamily: "var(--font-body)" }}>
                 <div className="col-span-5">{t("plan_concept")}</div>
                 <div className="col-span-3">{t("plan_due_date")}</div>
                 <div className="col-span-3">{t("plan_percentage")}</div>
@@ -2570,7 +2964,7 @@ function PaymentPlanSection({ clientId, villaTotal, plan, onPlanChange }) {
                 const status = getInstallmentStatus(inst);
                 const cfg = STATUS_STYLES[status];
                 return (
-                  <div key={inst.id} className="grid grid-cols-24 gap-2 px-3 py-2 border-t border-[#1A2342]/10 items-center" style={{ fontFamily: "'Manrope', sans-serif" }}>
+                  <div key={inst.id} className="grid grid-cols-24 gap-2 px-3 py-2 border-t border-[#1A2342]/10 items-center" style={{ fontFamily: "var(--font-body)" }}>
                     <div className="col-span-5">
                       <input value={inst.concept || ""} onChange={e => updateInstallment(inst.id, "concept", e.target.value)}
                         placeholder={`${lang === "es" ? "Cuota" : "Installment"} ${idx + 1}`}
@@ -2614,27 +3008,27 @@ function PaymentPlanSection({ clientId, villaTotal, plan, onPlanChange }) {
           {/* Totals */}
           <div className="p-4 bg-[#1A2342] text-[#F5F1E8] grid grid-cols-2 md:grid-cols-4 gap-4">
             <div>
-              <div className="text-[10px] uppercase tracking-[0.2em] text-[#F5F1E8]/60" style={{ fontFamily: "'Manrope', sans-serif" }}>{t("plan_villa_total")}</div>
-              <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: "1.25rem" }}>{fmtUSD(villaTotal)}</div>
+              <div className="text-[10px] uppercase tracking-[0.2em] text-[#F5F1E8]/60" style={{ fontFamily: "var(--font-body)" }}>{t("plan_villa_total")}</div>
+              <div style={{ fontFamily: "var(--font-heading)", fontSize: "1.25rem" }}>{fmtUSD(villaTotal)}</div>
             </div>
             <div>
-              <div className="text-[10px] uppercase tracking-[0.2em] text-[#F5F1E8]/60" style={{ fontFamily: "'Manrope', sans-serif" }}>{t("plan_total_expected")}</div>
-              <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: "1.25rem" }} className={mismatch ? "text-[#D4A24C]" : ""}>{fmtUSD(totals.expected)}</div>
+              <div className="text-[10px] uppercase tracking-[0.2em] text-[#F5F1E8]/60" style={{ fontFamily: "var(--font-body)" }}>{t("plan_total_expected")}</div>
+              <div style={{ fontFamily: "var(--font-heading)", fontSize: "1.25rem" }} className={mismatch ? "text-[#D4A24C]" : ""}>{fmtUSD(totals.expected)}</div>
             </div>
             <div>
-              <div className="text-[10px] uppercase tracking-[0.2em] text-[#F5F1E8]/60" style={{ fontFamily: "'Manrope', sans-serif" }}>{t("plan_total_received")}</div>
-              <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: "1.25rem" }} className="text-[#C9A961]">{fmtUSD(totals.received)}</div>
+              <div className="text-[10px] uppercase tracking-[0.2em] text-[#F5F1E8]/60" style={{ fontFamily: "var(--font-body)" }}>{t("plan_total_received")}</div>
+              <div style={{ fontFamily: "var(--font-heading)", fontSize: "1.25rem" }} className="text-[#C9A961]">{fmtUSD(totals.received)}</div>
             </div>
             <div>
-              <div className="text-[10px] uppercase tracking-[0.2em] text-[#F5F1E8]/60" style={{ fontFamily: "'Manrope', sans-serif" }}>{t("plan_total_pending")}</div>
-              <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: "1.25rem" }}>{fmtUSD(totals.pending)}</div>
+              <div className="text-[10px] uppercase tracking-[0.2em] text-[#F5F1E8]/60" style={{ fontFamily: "var(--font-body)" }}>{t("plan_total_pending")}</div>
+              <div style={{ fontFamily: "var(--font-heading)", fontSize: "1.25rem" }}>{fmtUSD(totals.pending)}</div>
             </div>
           </div>
 
           {mismatch && (
             <div className="p-3 bg-[#F3DDD9] border-l-2 border-[#B04B3F] flex items-start gap-2">
               <AlertTriangle className="w-4 h-4 text-[#B04B3F] flex-shrink-0 mt-0.5" strokeWidth={1.5} />
-              <div className="text-sm text-[#B04B3F]" style={{ fontFamily: "'Manrope', sans-serif" }}>
+              <div className="text-sm text-[#B04B3F]" style={{ fontFamily: "var(--font-body)" }}>
                 {t("plan_mismatch_warning")}: {fmtUSD(Math.abs(totals.expected - villaTotal))}
               </div>
             </div>
@@ -2662,10 +3056,10 @@ function TemplateModal({ villaTotal, onApply, onClose }) {
       <div className="bg-[#F5F1E8] border border-[#1A2342]/15 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
         <div className="px-6 py-4 border-b border-[#1A2342]/10 flex items-center justify-between">
           <div>
-            <h2 className="text-[#1A2342]" style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: "1.5rem", fontWeight: 500 }}>
+            <h2 className="text-[#1A2342]" style={{ fontFamily: "var(--font-heading)", fontSize: "1.5rem", fontWeight: 500 }}>
               {t("plan_template_title")}
             </h2>
-            <p className="text-[11px] text-[#1A2342]/60 mt-0.5" style={{ fontFamily: "'Manrope', sans-serif" }}>
+            <p className="text-[11px] text-[#1A2342]/60 mt-0.5" style={{ fontFamily: "var(--font-body)" }}>
               {t("plan_template_sub")}
             </p>
           </div>
@@ -2688,7 +3082,7 @@ function TemplateModal({ villaTotal, onApply, onClose }) {
             return (
               <button key={tpl.id} onClick={() => setSelected(tpl.id)}
                 className={`w-full text-left p-4 border transition-all ${active ? "border-[#1A2342] bg-[#FDFBF6]" : "border-[#1A2342]/15 hover:border-[#1A2342]/40"}`}
-                style={{ fontFamily: "'Manrope', sans-serif" }}>
+                style={{ fontFamily: "var(--font-body)" }}>
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex-1">
                     <div className="text-sm font-medium text-[#1A2342]">{label}</div>
@@ -2704,7 +3098,7 @@ function TemplateModal({ villaTotal, onApply, onClose }) {
 
         <div className="px-6 pb-6">
           <Input label={t("plan_start_date")} type="date" value={startDate} onChange={setStartDate} />
-          <div className="text-[11px] text-[#1A2342]/50 mt-1" style={{ fontFamily: "'Manrope', sans-serif" }}>
+          <div className="text-[11px] text-[#1A2342]/50 mt-1" style={{ fontFamily: "var(--font-body)" }}>
             {t("plan_start_date_help")}
           </div>
         </div>
@@ -2846,17 +3240,17 @@ function DocumentsSection({ clientId, documents, onDocumentsChange }) {
             {uploading ? (
               <>
                 <Loader2 className="w-6 h-6 text-[#C9A961] animate-spin" strokeWidth={1.5} />
-                <div className="text-sm text-[#1A2342]" style={{ fontFamily: "'Manrope', sans-serif" }}>
+                <div className="text-sm text-[#1A2342]" style={{ fontFamily: "var(--font-body)" }}>
                   {t("doc_uploading")}
                 </div>
               </>
             ) : (
               <>
                 <Upload className="w-6 h-6 text-[#1A2342]/50" strokeWidth={1.5} />
-                <div className="text-sm text-[#1A2342]" style={{ fontFamily: "'Manrope', sans-serif" }}>
+                <div className="text-sm text-[#1A2342]" style={{ fontFamily: "var(--font-body)" }}>
                   {t("doc_upload_help")}
                 </div>
-                <div className="text-[11px] text-[#1A2342]/50" style={{ fontFamily: "'Manrope', sans-serif" }}>
+                <div className="text-[11px] text-[#1A2342]/50" style={{ fontFamily: "var(--font-body)" }}>
                   PDF · JPG · PNG · DOC · XLS · Max 50 MB
                 </div>
               </>
@@ -2867,7 +3261,7 @@ function DocumentsSection({ clientId, documents, onDocumentsChange }) {
         {error && (
           <div className="p-3 bg-[#F3DDD9] border-l-2 border-[#B04B3F] flex items-start gap-2">
             <AlertCircle className="w-4 h-4 text-[#B04B3F] flex-shrink-0 mt-0.5" strokeWidth={1.5} />
-            <div className="text-sm text-[#B04B3F]" style={{ fontFamily: "'Manrope', sans-serif" }}>{error}</div>
+            <div className="text-sm text-[#B04B3F]" style={{ fontFamily: "var(--font-body)" }}>{error}</div>
           </div>
         )}
       </div>
@@ -2876,7 +3270,7 @@ function DocumentsSection({ clientId, documents, onDocumentsChange }) {
       <div>
         {(!documents || documents.length === 0) ? (
           <div className="p-6 text-center text-sm text-[#1A2342]/50 bg-[#FDFBF6] border border-dashed border-[#1A2342]/20"
-            style={{ fontFamily: "'Manrope', sans-serif" }}>
+            style={{ fontFamily: "var(--font-body)" }}>
             {t("doc_no_documents")}
           </div>
         ) : (
@@ -2889,12 +3283,12 @@ function DocumentsSection({ clientId, documents, onDocumentsChange }) {
                   <Icon className="w-5 h-5 text-[#4A6FA5] flex-shrink-0" strokeWidth={1.5} />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <span className="text-sm text-[#1A2342] truncate" style={{ fontFamily: "'Manrope', sans-serif" }}>
+                      <span className="text-sm text-[#1A2342] truncate" style={{ fontFamily: "var(--font-body)" }}>
                         {doc.name}
                       </span>
                       <Badge color="#1A2342" bg="#D9DDE8">{getDocTypeLabel(doc.type)}</Badge>
                     </div>
-                    <div className="text-[11px] text-[#1A2342]/50" style={{ fontFamily: "'Manrope', sans-serif" }}>
+                    <div className="text-[11px] text-[#1A2342]/50" style={{ fontFamily: "var(--font-body)" }}>
                       {fmtFileSize(doc.size || 0)} · {t("doc_uploaded_at")} {fmtDate(doc.uploadedAt)}
                     </div>
                   </div>
@@ -3013,7 +3407,7 @@ function ClientForm({ initial, initialTab, onSave, onCancel }) {
           return (
             <button key={t.v} onClick={() => setTab(t.v)}
               className={`flex items-center gap-1.5 px-3 py-2.5 text-[11px] uppercase tracking-[0.12em] whitespace-nowrap transition-all ${active ? "text-[#1A2342] border-b-2 border-[#1A2342] -mb-px" : "text-[#1A2342]/50 hover:text-[#1A2342]/80"}`}
-              style={{ fontFamily: "'Manrope', sans-serif" }}>
+              style={{ fontFamily: "var(--font-body)" }}>
               <Icon className="w-3.5 h-3.5" strokeWidth={1.8} />
               {t.l}
             </button>
@@ -3029,14 +3423,14 @@ function ClientForm({ initial, initialTab, onSave, onCancel }) {
             <button type="button" onClick={() => update({ type: "individual" })}
               className={`p-4 border text-left transition-all ${data.type === "individual" ? "border-[#1A2342] bg-[#FDFBF6]" : "border-[#1A2342]/15 hover:border-[#1A2342]/40"}`}>
               <UserCircle className="w-5 h-5 text-[#1A2342] mb-2" strokeWidth={1.5} />
-              <div className="text-sm font-medium text-[#1A2342]" style={{ fontFamily: "'Manrope', sans-serif" }}>{t("clients_individual")}</div>
-              <div className="text-[11px] text-[#1A2342]/60 mt-0.5" style={{ fontFamily: "'Manrope', sans-serif" }}>Individual Person</div>
+              <div className="text-sm font-medium text-[#1A2342]" style={{ fontFamily: "var(--font-body)" }}>{t("clients_individual")}</div>
+              <div className="text-[11px] text-[#1A2342]/60 mt-0.5" style={{ fontFamily: "var(--font-body)" }}>Individual Person</div>
             </button>
             <button type="button" onClick={() => update({ type: "entity" })}
               className={`p-4 border text-left transition-all ${data.type === "entity" ? "border-[#1A2342] bg-[#FDFBF6]" : "border-[#1A2342]/15 hover:border-[#1A2342]/40"}`}>
               <Building2 className="w-5 h-5 text-[#1A2342] mb-2" strokeWidth={1.5} />
-              <div className="text-sm font-medium text-[#1A2342]" style={{ fontFamily: "'Manrope', sans-serif" }}>{t("clients_entity")}</div>
-              <div className="text-[11px] text-[#1A2342]/60 mt-0.5" style={{ fontFamily: "'Manrope', sans-serif" }}>Company / Corporation</div>
+              <div className="text-sm font-medium text-[#1A2342]" style={{ fontFamily: "var(--font-body)" }}>{t("clients_entity")}</div>
+              <div className="text-[11px] text-[#1A2342]/60 mt-0.5" style={{ fontFamily: "var(--font-body)" }}>Company / Corporation</div>
             </button>
           </div>
 
@@ -3048,7 +3442,7 @@ function ClientForm({ initial, initialTab, onSave, onCancel }) {
               return (
                 <button key={s} type="button" onClick={() => update({ status: s })}
                   className={`px-3 py-2.5 text-xs text-left transition-all border ${active ? "border-[#1A2342]" : "border-[#1A2342]/15 hover:border-[#1A2342]/40"}`}
-                  style={{ fontFamily: "'Manrope', sans-serif", backgroundColor: active ? cfg.bg : "transparent" }}>
+                  style={{ fontFamily: "var(--font-body)", backgroundColor: active ? cfg.bg : "transparent" }}>
                   <span style={{ color: cfg.color }} className="font-medium">{t("status_" + s)}</span>
                 </button>
               );
@@ -3060,6 +3454,21 @@ function ClientForm({ initial, initialTab, onSave, onCancel }) {
       {/* Tab: Personal / Entity */}
       {tab === "personal" && (
         <div className="space-y-6">
+          {/* Fillable KYC PDF — for clients who prefer to complete the form themselves */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 bg-[#FDFBF6] border border-[#1A2342]/10">
+            <div>
+              <div className="text-sm font-medium text-[#1A2342]" style={{ fontFamily: "var(--font-body)" }}>{t("kyc_pdf_title")}</div>
+              <p className="text-[11px] text-[#1A2342]/60 mt-0.5" style={{ fontFamily: "var(--font-body)" }}>{t("kyc_pdf_help")}</p>
+            </div>
+            <Button variant="ghost" icon={FileDown} className="flex-shrink-0"
+              onClick={async () => {
+                try { await generateKycPdf(data, settings, lang); }
+                catch (e) { console.error("KYC PDF failed:", e); alert(t("kyc_pdf_error")); }
+              }}>
+              {t("kyc_pdf_generate")}
+            </Button>
+          </div>
+
           {data.type === "individual" ? (
             <>
               <SectionTitle subtitle={t("sec_personal_sub")}>{t("sec_personal")}</SectionTitle>
@@ -3138,7 +3547,7 @@ function ClientForm({ initial, initialTab, onSave, onCancel }) {
             <div className="flex items-start justify-between">
               <div className="flex-1">
                 <Checkbox label={`${t("lbl_smart_living")} — ${fmtUSD(pricing_cfg.smartLivingPrice)}`} checked={data.smartLivingPackage} onChange={v => update({ smartLivingPackage: v })} />
-                <p className="text-[11px] text-[#1A2342]/60 mt-1 ml-6" style={{ fontFamily: "'Manrope', sans-serif" }}>
+                <p className="text-[11px] text-[#1A2342]/60 mt-1 ml-6" style={{ fontFamily: "var(--font-body)" }}>
                   {t("lbl_smart_living_desc")}
                 </p>
               </div>
@@ -3162,30 +3571,30 @@ function ClientForm({ initial, initialTab, onSave, onCancel }) {
 
           {/* Price Breakdown */}
           <div className="p-4 bg-[#1A2342] text-[#F5F1E8] space-y-2">
-            <div className="text-[10px] uppercase tracking-[0.2em] text-[#F5F1E8]/60 mb-3" style={{ fontFamily: "'Manrope', sans-serif" }}>{t("sec_price_breakdown")}</div>
-            <div className="flex justify-between text-sm" style={{ fontFamily: "'Manrope', sans-serif" }}>
+            <div className="text-[10px] uppercase tracking-[0.2em] text-[#F5F1E8]/60 mb-3" style={{ fontFamily: "var(--font-body)" }}>{t("sec_price_breakdown")}</div>
+            <div className="flex justify-between text-sm" style={{ fontFamily: "var(--font-body)" }}>
               <span className="text-[#F5F1E8]/80">{t("lbl_price_base")}</span>
               <span>{fmtUSD(pricing.base)}</span>
             </div>
             {pricing.smart > 0 && (
-              <div className="flex justify-between text-sm" style={{ fontFamily: "'Manrope', sans-serif" }}>
+              <div className="flex justify-between text-sm" style={{ fontFamily: "var(--font-body)" }}>
                 <span className="text-[#F5F1E8]/80">+ Smart Living</span>
                 <span>{fmtUSD(pricing.smart)}</span>
               </div>
             )}
             {pricing.furniture > 0 && (
-              <div className="flex justify-between text-sm" style={{ fontFamily: "'Manrope', sans-serif" }}>
+              <div className="flex justify-between text-sm" style={{ fontFamily: "var(--font-body)" }}>
                 <span className="text-[#F5F1E8]/80">+ {lang === "es" ? "Muebles" : "Furniture"}</span>
                 <span>{fmtUSD(pricing.furniture)}</span>
               </div>
             )}
             {pricing.discount > 0 && (
-              <div className="flex justify-between text-sm text-[#C9A961]" style={{ fontFamily: "'Manrope', sans-serif" }}>
+              <div className="flex justify-between text-sm text-[#C9A961]" style={{ fontFamily: "var(--font-body)" }}>
                 <span>− {lang === "es" ? "Descuento" : "Discount"}</span>
                 <span>−{fmtUSD(pricing.discount)}</span>
               </div>
             )}
-            <div className="border-t border-[#F5F1E8]/20 pt-2 mt-2 flex justify-between" style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: "1.25rem" }}>
+            <div className="border-t border-[#F5F1E8]/20 pt-2 mt-2 flex justify-between" style={{ fontFamily: "var(--font-heading)", fontSize: "1.25rem" }}>
               <span>{t("lbl_total")}</span>
               <span>{fmtUSD(pricing.total)}</span>
             </div>
@@ -3239,7 +3648,7 @@ function ClientForm({ initial, initialTab, onSave, onCancel }) {
             {RISK_LEVELS.map(r => (
               <button key={r.v} type="button" onClick={() => update({ riskLevel: r.v })}
                 className={`px-3 py-2.5 text-sm text-left border transition-all ${data.riskLevel === r.v ? "border-[#1A2342]" : "border-[#1A2342]/15 hover:border-[#1A2342]/40"}`}
-                style={{ fontFamily: "'Manrope', sans-serif", color: r.color, backgroundColor: data.riskLevel === r.v ? r.color + "15" : "transparent" }}>
+                style={{ fontFamily: "var(--font-body)", color: r.color, backgroundColor: data.riskLevel === r.v ? r.color + "15" : "transparent" }}>
                 {t("risk_" + r.v)}
               </button>
             ))}
@@ -3272,14 +3681,14 @@ function ClientForm({ initial, initialTab, onSave, onCancel }) {
               <div>
                 <Input label={t("lbl_grace_days")} type="number" value={data.graceDays ?? ""} onChange={v => update({ graceDays: v })}
                   placeholder="5" />
-                <div className="text-[11px] text-[#1A2342]/50 mt-1" style={{ fontFamily: "'Manrope', sans-serif" }}>
+                <div className="text-[11px] text-[#1A2342]/50 mt-1" style={{ fontFamily: "var(--font-body)" }}>
                   {t("lbl_grace_days_help")}
                 </div>
               </div>
               <div>
                 <Input label={t("lbl_late_interest")} type="number" value={data.lateInterestPct ?? ""} onChange={v => update({ lateInterestPct: v })}
                   placeholder="0" />
-                <div className="text-[11px] text-[#1A2342]/50 mt-1" style={{ fontFamily: "'Manrope', sans-serif" }}>
+                <div className="text-[11px] text-[#1A2342]/50 mt-1" style={{ fontFamily: "var(--font-body)" }}>
                   {t("lbl_late_interest_help")}
                 </div>
               </div>
@@ -3310,7 +3719,7 @@ function ClientForm({ initial, initialTab, onSave, onCancel }) {
 
           <div className="space-y-2">
             {(data.payments || []).length === 0 ? (
-              <div className="p-6 text-center text-sm text-[#1A2342]/50 bg-[#FDFBF6] border border-dashed border-[#1A2342]/20" style={{ fontFamily: "'Manrope', sans-serif" }}>
+              <div className="p-6 text-center text-sm text-[#1A2342]/50 bg-[#FDFBF6] border border-dashed border-[#1A2342]/20" style={{ fontFamily: "var(--font-body)" }}>
                 {t("lbl_no_payments")}
               </div>
             ) : (
@@ -3357,11 +3766,11 @@ function ClientForm({ initial, initialTab, onSave, onCancel }) {
           {data.payments && data.payments.length > 0 && (
             <div className="p-4 bg-[#1A2342] text-[#F5F1E8]">
               <div className="flex justify-between items-center mb-2">
-                <span className="text-[10px] uppercase tracking-[0.2em] text-[#F5F1E8]/60" style={{ fontFamily: "'Manrope', sans-serif" }}>{t("lbl_payment_progress")}</span>
-                <span className="text-sm" style={{ fontFamily: "'Manrope', sans-serif" }}>{paidPercentage(data).toFixed(1)}%</span>
+                <span className="text-[10px] uppercase tracking-[0.2em] text-[#F5F1E8]/60" style={{ fontFamily: "var(--font-body)" }}>{t("lbl_payment_progress")}</span>
+                <span className="text-sm" style={{ fontFamily: "var(--font-body)" }}>{paidPercentage(data).toFixed(1)}%</span>
               </div>
               <ProgressBar percent={paidPercentage(data)} color="#C9A961" />
-              <div className="flex justify-between mt-3 text-xs" style={{ fontFamily: "'Manrope', sans-serif" }}>
+              <div className="flex justify-between mt-3 text-xs" style={{ fontFamily: "var(--font-body)" }}>
                 <span className="text-[#F5F1E8]/70">{t("lbl_paid")}: {fmtUSD(paidAmount(data))}</span>
                 <span className="text-[#F5F1E8]/70">{t("lbl_balance")}: {fmtUSD(pricing.total - paidAmount(data))}</span>
               </div>
@@ -3394,30 +3803,30 @@ function ClientForm({ initial, initialTab, onSave, onCancel }) {
 
               {/* Commission breakdown — internal only */}
               <div className="p-4 bg-[#1A2342] text-[#F5F1E8] space-y-2">
-                <div className="text-[10px] uppercase tracking-[0.2em] text-[#F5F1E8]/60 mb-3" style={{ fontFamily: "'Manrope', sans-serif" }}>
+                <div className="text-[10px] uppercase tracking-[0.2em] text-[#F5F1E8]/60 mb-3" style={{ fontFamily: "var(--font-body)" }}>
                   {t("sec_commission")}
                 </div>
                 {(() => {
                   const c = computeCommission(data, settings);
                   return (
                     <>
-                      <div className="flex justify-between text-sm" style={{ fontFamily: "'Manrope', sans-serif" }}>
+                      <div className="flex justify-between text-sm" style={{ fontFamily: "var(--font-body)" }}>
                         <span className="text-[#F5F1E8]/80">{t("lbl_commission_pct")}</span>
                         <span>{c.pct}%</span>
                       </div>
-                      <div className="flex justify-between text-sm" style={{ fontFamily: "'Manrope', sans-serif" }}>
+                      <div className="flex justify-between text-sm" style={{ fontFamily: "var(--font-body)" }}>
                         <span className="text-[#F5F1E8]/80">{t("lbl_commission_total")}</span>
                         <span>{fmtUSD(c.totalCommission)}</span>
                       </div>
-                      <div className="flex justify-between text-sm" style={{ fontFamily: "'Manrope', sans-serif" }}>
+                      <div className="flex justify-between text-sm" style={{ fontFamily: "var(--font-body)" }}>
                         <span className="text-[#F5F1E8]/80">{t("lbl_commission_earned")}</span>
                         <span className="text-[#C9A961]">{fmtUSD(c.earnedByBroker)}</span>
                       </div>
-                      <div className="flex justify-between text-sm" style={{ fontFamily: "'Manrope', sans-serif" }}>
+                      <div className="flex justify-between text-sm" style={{ fontFamily: "var(--font-body)" }}>
                         <span className="text-[#F5F1E8]/80">{t("lbl_commission_paid")}</span>
                         <span>{fmtUSD(c.paidToBroker)}</span>
                       </div>
-                      <div className="border-t border-[#F5F1E8]/20 pt-2 mt-2 flex justify-between" style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: "1.25rem" }}>
+                      <div className="border-t border-[#F5F1E8]/20 pt-2 mt-2 flex justify-between" style={{ fontFamily: "var(--font-heading)", fontSize: "1.25rem" }}>
                         <span>{t("lbl_commission_pending")}</span>
                         <span className={c.pendingToBroker > 0 ? "text-[#D4A24C]" : ""}>{fmtUSD(c.pendingToBroker)}</span>
                       </div>
@@ -3427,10 +3836,10 @@ function ClientForm({ initial, initialTab, onSave, onCancel }) {
               </div>
 
               <div className="p-3 bg-[#FDFBF6] border-l-2 border-[#C9A961]">
-                <div className="text-[11px] text-[#1A2342]/70 mb-1" style={{ fontFamily: "'Manrope', sans-serif" }}>
+                <div className="text-[11px] text-[#1A2342]/70 mb-1" style={{ fontFamily: "var(--font-body)" }}>
                   ℹ {t("lbl_commission_base_note")}
                 </div>
-                <div className="text-[11px] text-[#1A2342]/70" style={{ fontFamily: "'Manrope', sans-serif" }}>
+                <div className="text-[11px] text-[#1A2342]/70" style={{ fontFamily: "var(--font-body)" }}>
                   ℹ {t("lbl_commission_progress_note")}
                 </div>
               </div>
@@ -3466,7 +3875,7 @@ function ClientForm({ initial, initialTab, onSave, onCancel }) {
 
       {/* Footer */}
       <div className="flex items-center justify-between pt-6 mt-6 border-t border-[#1A2342]/10">
-        <div className="text-[11px] text-[#1A2342]/50" style={{ fontFamily: "'Manrope', sans-serif" }}>
+        <div className="text-[11px] text-[#1A2342]/50" style={{ fontFamily: "var(--font-body)" }}>
           {t("lbl_id_label")}: {data.id} · {t("lbl_created")}: {fmtDate(data.createdAt)}
         </div>
         <div className="flex gap-2">
@@ -3509,7 +3918,7 @@ function StageStepper({ currentStage, lang }) {
                 </div>
                 <div className="text-center mt-2 px-1">
                   <div className={`text-[10px] uppercase tracking-[0.12em] ${isActive ? "font-semibold" : ""}`}
-                    style={{ color: isActive ? cfg.color : "#1A2342", opacity: isFuture ? 0.5 : 1, fontFamily: "'Manrope', sans-serif" }}>
+                    style={{ color: isActive ? cfg.color : "#1A2342", opacity: isFuture ? 0.5 : 1, fontFamily: "var(--font-body)" }}>
                     {label}
                   </div>
                 </div>
@@ -3539,12 +3948,12 @@ function StageRequirementsChecklist({ client, targetStage, onGoToTab, lang }) {
     <div className="p-4 bg-[#FDFBF6] border border-[#1A2342]/15 space-y-3">
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <div>
-          <div className="text-[10px] uppercase tracking-[0.15em] text-[#1A2342]/60" style={{ fontFamily: "'Manrope', sans-serif" }}>
+          <div className="text-[10px] uppercase tracking-[0.15em] text-[#1A2342]/60" style={{ fontFamily: "var(--font-body)" }}>
             {t("stage_next")}
           </div>
           <div className="flex items-center gap-2 mt-1">
             <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: nextCfg.color }} />
-            <span className="text-[#1A2342] font-semibold" style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: "1.15rem" }}>
+            <span className="text-[#1A2342] font-semibold" style={{ fontFamily: "var(--font-heading)", fontSize: "1.15rem" }}>
               {lang === "es" ? nextCfg.label : nextCfg.labelEn}
             </span>
           </div>
@@ -3557,13 +3966,13 @@ function StageRequirementsChecklist({ client, targetStage, onGoToTab, lang }) {
         )}
       </div>
 
-      <div className="text-[11px] uppercase tracking-[0.12em] text-[#1A2342]/60 pt-2 border-t border-[#1A2342]/10" style={{ fontFamily: "'Manrope', sans-serif" }}>
+      <div className="text-[11px] uppercase tracking-[0.12em] text-[#1A2342]/60 pt-2 border-t border-[#1A2342]/10" style={{ fontFamily: "var(--font-body)" }}>
         {t("stage_requirements")}:
       </div>
 
       <ul className="space-y-1.5">
         {items.map(item => (
-          <li key={item.key} className="flex items-start gap-2 text-sm" style={{ fontFamily: "'Manrope', sans-serif" }}>
+          <li key={item.key} className="flex items-start gap-2 text-sm" style={{ fontFamily: "var(--font-body)" }}>
             {item.done ? (
               <Check className="w-4 h-4 text-[#2D5E3E] flex-shrink-0 mt-0.5" strokeWidth={2} />
             ) : (
@@ -3575,7 +3984,7 @@ function StageRequirementsChecklist({ client, targetStage, onGoToTab, lang }) {
             {!item.done && onGoToTab && (
               <button onClick={() => onGoToTab(item.tab)}
                 className="text-[11px] text-[#4A6FA5] hover:text-[#1A2342] underline underline-offset-2"
-                style={{ fontFamily: "'Manrope', sans-serif" }}>
+                style={{ fontFamily: "var(--font-body)" }}>
                 {t("stage_go_to_tab")}
               </button>
             )}
@@ -3635,10 +4044,10 @@ function QuickCreateModal({ open, onClose, onCreate }) {
       <div className="bg-[#F5F1E8] border border-[#1A2342]/15 w-full max-w-md">
         <div className="px-6 py-4 border-b border-[#1A2342]/10 flex items-center justify-between">
           <div>
-            <h2 className="text-[#1A2342]" style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: "1.5rem", fontWeight: 500 }}>
+            <h2 className="text-[#1A2342]" style={{ fontFamily: "var(--font-heading)", fontSize: "1.5rem", fontWeight: 500 }}>
               {t("qc_title")}
             </h2>
-            <p className="text-[11px] text-[#1A2342]/60 mt-0.5" style={{ fontFamily: "'Manrope', sans-serif" }}>
+            <p className="text-[11px] text-[#1A2342]/60 mt-0.5" style={{ fontFamily: "var(--font-body)" }}>
               {t("qc_sub")}
             </p>
           </div>
@@ -3754,14 +4163,14 @@ function StageTransitionModal({ open, client, targetStage, settings, onConfirm, 
           <div>
             <div className="flex items-center gap-2 mb-1">
               <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: targetCfg.color }} />
-              <span className="text-[10px] uppercase tracking-[0.15em] text-[#1A2342]/60" style={{ fontFamily: "'Manrope', sans-serif" }}>
+              <span className="text-[10px] uppercase tracking-[0.15em] text-[#1A2342]/60" style={{ fontFamily: "var(--font-body)" }}>
                 {isES ? targetCfg.label : targetCfg.labelEn}
               </span>
             </div>
-            <h2 className="text-[#1A2342]" style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: "1.5rem", fontWeight: 500 }}>
+            <h2 className="text-[#1A2342]" style={{ fontFamily: "var(--font-heading)", fontSize: "1.5rem", fontWeight: 500 }}>
               {title}
             </h2>
-            <p className="text-[11px] text-[#1A2342]/60 mt-0.5" style={{ fontFamily: "'Manrope', sans-serif" }}>
+            <p className="text-[11px] text-[#1A2342]/60 mt-0.5" style={{ fontFamily: "var(--font-body)" }}>
               {sub}
             </p>
           </div>
@@ -3790,7 +4199,7 @@ function StageTransitionModal({ open, client, targetStage, settings, onConfirm, 
               <div>
                 <Input label={t("stm_discussed_price")} type="number" value={discussedPrice} onChange={setDiscussedPrice}
                   placeholder={villaModel && villaModels[villaModel] ? String(Math.round(villaModels[villaModel].sqft * (settings?.pricing?.pricePerSqft || 271))) : ""} />
-                <div className="text-[11px] text-[#1A2342]/50 mt-1" style={{ fontFamily: "'Manrope', sans-serif" }}>
+                <div className="text-[11px] text-[#1A2342]/50 mt-1" style={{ fontFamily: "var(--font-body)" }}>
                   {t("stm_discussed_price_help")}
                 </div>
               </div>
@@ -3809,7 +4218,7 @@ function StageTransitionModal({ open, client, targetStage, settings, onConfirm, 
                   ]} required />
                 <div>
                   <Input label={t("lbl_grace_days")} type="number" value={graceDays} onChange={setGraceDays} placeholder="5" />
-                  <div className="text-[11px] text-[#1A2342]/50 mt-1" style={{ fontFamily: "'Manrope', sans-serif" }}>
+                  <div className="text-[11px] text-[#1A2342]/50 mt-1" style={{ fontFamily: "var(--font-body)" }}>
                     {t("lbl_grace_days_help")}
                   </div>
                 </div>
@@ -3824,7 +4233,7 @@ function StageTransitionModal({ open, client, targetStage, settings, onConfirm, 
                       l: `${isES ? tpl.labelEs : tpl.labelEn} — ${isES ? tpl.descEs : tpl.descEn}`
                     }))
                   ]} />
-                <div className="text-[11px] text-[#1A2342]/50 mt-1" style={{ fontFamily: "'Manrope', sans-serif" }}>
+                <div className="text-[11px] text-[#1A2342]/50 mt-1" style={{ fontFamily: "var(--font-body)" }}>
                   {t("stm_template_help")}
                 </div>
                 {templateId && (
@@ -3838,7 +4247,7 @@ function StageTransitionModal({ open, client, targetStage, settings, onConfirm, 
 
           {isActiveTransition && (
             <div className="p-4 bg-[#FDFBF6] border border-[#1A2342]/10 text-sm text-[#1A2342]/70"
-              style={{ fontFamily: "'Manrope', sans-serif" }}>
+              style={{ fontFamily: "var(--font-body)" }}>
               {t("stm_sub_active")}
             </div>
           )}
@@ -3869,8 +4278,8 @@ function ClientDetail({ client, onEdit, onEditTab, onAdvanceStage, onClose, onDe
     return (
       <div className="flex items-start gap-3 py-1.5 text-sm">
         {Icon && <Icon className="w-3.5 h-3.5 text-[#1A2342]/40 mt-1 flex-shrink-0" strokeWidth={1.5} />}
-        <div className="w-44 text-[11px] uppercase tracking-[0.08em] text-[#1A2342]/50 pt-0.5 flex-shrink-0" style={{ fontFamily: "'Manrope', sans-serif" }}>{label}</div>
-        <div className="flex-1 text-[#1A2342]" style={{ fontFamily: "'Manrope', sans-serif" }}>{value || "—"}</div>
+        <div className="w-44 text-[11px] uppercase tracking-[0.08em] text-[#1A2342]/50 pt-0.5 flex-shrink-0" style={{ fontFamily: "var(--font-body)" }}>{label}</div>
+        <div className="flex-1 text-[#1A2342]" style={{ fontFamily: "var(--font-body)" }}>{value || "—"}</div>
       </div>
     );
   };
@@ -3882,7 +4291,7 @@ function ClientDetail({ client, onEdit, onEditTab, onAdvanceStage, onClose, onDe
         <div>
           <div className="flex items-center gap-3 mb-2">
             {client.type === "entity" ? <Building2 className="w-5 h-5 text-[#1A2342]/50" strokeWidth={1.3} /> : <UserCircle className="w-5 h-5 text-[#1A2342]/50" strokeWidth={1.3} />}
-            <h1 className="text-[#1A2342]" style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: "2rem", fontWeight: 500, letterSpacing: "0.02em" }}>
+            <h1 className="text-[#1A2342]" style={{ fontFamily: "var(--font-heading)", fontSize: "2rem", fontWeight: 500, letterSpacing: "0.02em" }}>
               {name || t("cd_unnamed")}
             </h1>
           </div>
@@ -3935,7 +4344,7 @@ function ClientDetail({ client, onEdit, onEditTab, onAdvanceStage, onClose, onDe
             return (
               <button onClick={handlePrimary}
                 className={`inline-flex items-start gap-3 px-5 py-3 border transition-all duration-150 text-left max-w-md ${variantClass}`}
-                style={{ fontFamily: "'Manrope', sans-serif" }}>
+                style={{ fontFamily: "var(--font-body)" }}>
                 <ActionIcon className="w-5 h-5 flex-shrink-0 mt-0.5" strokeWidth={1.8} />
                 <div>
                   <div className="font-medium tracking-wide text-sm">{label}</div>
@@ -3976,10 +4385,10 @@ function ClientDetail({ client, onEdit, onEditTab, onAdvanceStage, onClose, onDe
           <div className="bg-[#FDFBF6] border border-[#1A2342]/10 p-5 space-y-5">
             <div className="flex items-center justify-between flex-wrap gap-3">
               <div>
-                <div className="text-[10px] uppercase tracking-[0.2em] text-[#1A2342]/50 mb-1" style={{ fontFamily: "'Manrope', sans-serif" }}>
+                <div className="text-[10px] uppercase tracking-[0.2em] text-[#1A2342]/50 mb-1" style={{ fontFamily: "var(--font-body)" }}>
                   {t("stage_progress")}
                 </div>
-                <div className="text-[#1A2342]" style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: "1.25rem" }}>
+                <div className="text-[#1A2342]" style={{ fontFamily: "var(--font-heading)", fontSize: "1.25rem" }}>
                   {lang === "es" ? STAGE_CONFIG[currentStage].label : STAGE_CONFIG[currentStage].labelEn}
                 </div>
               </div>
@@ -4020,26 +4429,26 @@ function ClientDetail({ client, onEdit, onEditTab, onAdvanceStage, onClose, onDe
       {(client.lotNumber || client.villaModel) && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-0 border border-[#1A2342]/15">
           <div className="p-5 border-b md:border-b-0 md:border-r border-[#1A2342]/15">
-            <div className="text-[10px] uppercase tracking-[0.2em] text-[#1A2342]/50 mb-2" style={{ fontFamily: "'Manrope', sans-serif" }}>{t("cd_villa_assigned")}</div>
-            <div className="text-2xl text-[#1A2342]" style={{ fontFamily: "'Cormorant Garamond', serif" }}>
+            <div className="text-[10px] uppercase tracking-[0.2em] text-[#1A2342]/50 mb-2" style={{ fontFamily: "var(--font-body)" }}>{t("cd_villa_assigned")}</div>
+            <div className="text-2xl text-[#1A2342]" style={{ fontFamily: "var(--font-heading)" }}>
               {client.lotNumber ? `#${client.lotNumber}` : "—"}
             </div>
             {model && (
               <div className="mt-2 flex items-center gap-2">
                 <div className="w-2 h-2" style={{ backgroundColor: model.color }} />
-                <span className="text-sm text-[#1A2342]/70" style={{ fontFamily: "'Manrope', sans-serif" }}>{model.name}</span>
+                <span className="text-sm text-[#1A2342]/70" style={{ fontFamily: "var(--font-body)" }}>{model.name}</span>
               </div>
             )}
             {client.lotNumber && (
-              <div className="text-[11px] text-[#1A2342]/50 mt-1" style={{ fontFamily: "'Manrope', sans-serif" }}>
+              <div className="text-[11px] text-[#1A2342]/50 mt-1" style={{ fontFamily: "var(--font-body)" }}>
                 {t("villa_terrain")}: {fmtArea(lots[client.lotNumber], lang)}
               </div>
             )}
           </div>
           <div className="p-5 border-b md:border-b-0 md:border-r border-[#1A2342]/15">
-            <div className="text-[10px] uppercase tracking-[0.2em] text-[#1A2342]/50 mb-2" style={{ fontFamily: "'Manrope', sans-serif" }}>{t("cd_price_total")}</div>
-            <div className="text-2xl text-[#1A2342]" style={{ fontFamily: "'Cormorant Garamond', serif" }}>{fmtUSD(pricing.total)}</div>
-            <div className="text-[11px] text-[#1A2342]/60 mt-1 space-y-0.5" style={{ fontFamily: "'Manrope', sans-serif" }}>
+            <div className="text-[10px] uppercase tracking-[0.2em] text-[#1A2342]/50 mb-2" style={{ fontFamily: "var(--font-body)" }}>{t("cd_price_total")}</div>
+            <div className="text-2xl text-[#1A2342]" style={{ fontFamily: "var(--font-heading)" }}>{fmtUSD(pricing.total)}</div>
+            <div className="text-[11px] text-[#1A2342]/60 mt-1 space-y-0.5" style={{ fontFamily: "var(--font-body)" }}>
               <div>{t("cd_price_base")}: {fmtUSD(pricing.base)}</div>
               {pricing.smart > 0 && <div>{t("cd_price_smart")}: {fmtUSD(pricing.smart)}</div>}
               {pricing.furniture > 0 && <div>{t("cd_price_furniture")}: {fmtUSD(pricing.furniture)}</div>}
@@ -4047,10 +4456,10 @@ function ClientDetail({ client, onEdit, onEditTab, onAdvanceStage, onClose, onDe
             </div>
           </div>
           <div className="p-5">
-            <div className="text-[10px] uppercase tracking-[0.2em] text-[#1A2342]/50 mb-2" style={{ fontFamily: "'Manrope', sans-serif" }}>{t("cd_pay_progress")}</div>
-            <div className="text-2xl text-[#1A2342]" style={{ fontFamily: "'Cormorant Garamond', serif" }}>{pct.toFixed(1)}%</div>
+            <div className="text-[10px] uppercase tracking-[0.2em] text-[#1A2342]/50 mb-2" style={{ fontFamily: "var(--font-body)" }}>{t("cd_pay_progress")}</div>
+            <div className="text-2xl text-[#1A2342]" style={{ fontFamily: "var(--font-heading)" }}>{pct.toFixed(1)}%</div>
             <ProgressBar percent={pct} color="#C9A961" />
-            <div className="flex justify-between text-[11px] text-[#1A2342]/60 mt-2" style={{ fontFamily: "'Manrope', sans-serif" }}>
+            <div className="flex justify-between text-[11px] text-[#1A2342]/60 mt-2" style={{ fontFamily: "var(--font-body)" }}>
               <span>{t("lbl_paid")}: {fmtUSD(paid)}</span>
               <span>{t("lbl_balance")}: {fmtUSD(pricing.total - paid)}</span>
             </div>
@@ -4116,10 +4525,10 @@ function ClientDetail({ client, onEdit, onEditTab, onAdvanceStage, onClose, onDe
         </div>
         {(client.ubos && client.ubos.filter(u => u.name).length > 0) && (
           <div className="mt-4">
-            <div className="text-[10px] uppercase tracking-[0.12em] text-[#1A2342]/60 mb-2" style={{ fontFamily: "'Manrope', sans-serif" }}>{t("cd_ubos_list")}</div>
+            <div className="text-[10px] uppercase tracking-[0.12em] text-[#1A2342]/60 mb-2" style={{ fontFamily: "var(--font-body)" }}>{t("cd_ubos_list")}</div>
             <div className="space-y-1">
               {client.ubos.filter(u => u.name).map((u, i) => (
-                <div key={i} className="flex gap-3 text-sm p-2 bg-[#FDFBF6]" style={{ fontFamily: "'Manrope', sans-serif" }}>
+                <div key={i} className="flex gap-3 text-sm p-2 bg-[#FDFBF6]" style={{ fontFamily: "var(--font-body)" }}>
                   <span className="text-[#1A2342] font-medium">{u.name}</span>
                   <span className="text-[#1A2342]/60">{u.nationality}</span>
                   <span className="text-[#1A2342]/60">{u.idNumber}</span>
@@ -4137,7 +4546,7 @@ function ClientDetail({ client, onEdit, onEditTab, onAdvanceStage, onClose, onDe
           <SectionTitle>{t("cd_payment_history")}</SectionTitle>
           <div className="border border-[#1A2342]/10 overflow-x-auto">
             <div className="min-w-[600px]">
-            <div className="grid grid-cols-12 gap-2 px-3 py-2 bg-[#1A2342]/5 text-[10px] uppercase tracking-[0.12em] text-[#1A2342]/60" style={{ fontFamily: "'Manrope', sans-serif" }}>
+            <div className="grid grid-cols-12 gap-2 px-3 py-2 bg-[#1A2342]/5 text-[10px] uppercase tracking-[0.12em] text-[#1A2342]/60" style={{ fontFamily: "var(--font-body)" }}>
               <div className="col-span-2">{t("pay_date")}</div>
               <div className="col-span-2">{t("pay_type")}</div>
               <div className="col-span-3">{t("pay_method")}</div>
@@ -4145,7 +4554,7 @@ function ClientDetail({ client, onEdit, onEditTab, onAdvanceStage, onClose, onDe
               <div className="col-span-2 text-right">{lang === "es" ? "Monto" : "Amount"}</div>
             </div>
             {client.payments.map(p => (
-              <div key={p.id} className="grid grid-cols-12 gap-2 px-3 py-2.5 border-t border-[#1A2342]/10 text-sm" style={{ fontFamily: "'Manrope', sans-serif" }}>
+              <div key={p.id} className="grid grid-cols-12 gap-2 px-3 py-2.5 border-t border-[#1A2342]/10 text-sm" style={{ fontFamily: "var(--font-body)" }}>
                 <div className="col-span-2 text-[#1A2342]">{fmtDate(p.date)}</div>
                 <div className="col-span-2 text-[#1A2342]/70 capitalize">{p.type === "deposit" ? t("pay_type_deposit") : p.type === "installment" ? t("pay_type_installment") : p.type === "final" ? t("pay_type_final") : p.type}</div>
                 <div className="col-span-3 text-[#1A2342]/70">{PAYMENT_METHODS.find(m => m.v === p.method)?.l || p.method}</div>
@@ -4162,7 +4571,7 @@ function ClientDetail({ client, onEdit, onEditTab, onAdvanceStage, onClose, onDe
       {client.notes && (
         <div>
           <SectionTitle>{t("cd_notes")}</SectionTitle>
-          <div className="p-4 bg-[#FDFBF6] text-sm text-[#1A2342] whitespace-pre-wrap border border-[#1A2342]/10" style={{ fontFamily: "'Manrope', sans-serif" }}>
+          <div className="p-4 bg-[#FDFBF6] text-sm text-[#1A2342] whitespace-pre-wrap border border-[#1A2342]/10" style={{ fontFamily: "var(--font-body)" }}>
             {client.notes}
           </div>
         </div>
@@ -4183,7 +4592,7 @@ function ClientDetail({ client, onEdit, onEditTab, onAdvanceStage, onClose, onDe
             <SectionTitle>{t("sec_payment_plan")}</SectionTitle>
             <div className="border border-[#1A2342]/10 overflow-x-auto">
               <div className="min-w-[700px]">
-                <div className="grid grid-cols-12 gap-2 px-3 py-2 bg-[#1A2342]/5 text-[10px] uppercase tracking-[0.12em] text-[#1A2342]/60" style={{ fontFamily: "'Manrope', sans-serif" }}>
+                <div className="grid grid-cols-12 gap-2 px-3 py-2 bg-[#1A2342]/5 text-[10px] uppercase tracking-[0.12em] text-[#1A2342]/60" style={{ fontFamily: "var(--font-body)" }}>
                   <div className="col-span-1">#</div>
                   <div className="col-span-4">{t("plan_concept")}</div>
                   <div className="col-span-2">{t("plan_due_date")}</div>
@@ -4195,7 +4604,7 @@ function ClientDetail({ client, onEdit, onEditTab, onAdvanceStage, onClose, onDe
                   const status = getInstallmentStatus(inst);
                   const cfg = STATUS_STYLES[status];
                   return (
-                    <div key={inst.id} className="grid grid-cols-12 gap-2 px-3 py-2 border-t border-[#1A2342]/10 items-center text-sm" style={{ fontFamily: "'Manrope', sans-serif" }}>
+                    <div key={inst.id} className="grid grid-cols-12 gap-2 px-3 py-2 border-t border-[#1A2342]/10 items-center text-sm" style={{ fontFamily: "var(--font-body)" }}>
                       <div className="col-span-1 text-[#1A2342]/60">{idx + 1}</div>
                       <div className="col-span-4 text-[#1A2342]">{inst.concept || `Cuota ${idx + 1}`}</div>
                       <div className="col-span-2 text-[#1A2342]/70">{inst.dueDate ? fmtDate(inst.dueDate) : "—"}</div>
@@ -4213,20 +4622,20 @@ function ClientDetail({ client, onEdit, onEditTab, onAdvanceStage, onClose, onDe
             </div>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-0 border border-[#1A2342]/15 mt-3">
               <div className="p-3 border-r border-b md:border-b-0 border-[#1A2342]/15">
-                <div className="text-[10px] uppercase tracking-[0.15em] text-[#1A2342]/50" style={{ fontFamily: "'Manrope', sans-serif" }}>{t("plan_total_expected")}</div>
-                <div className="text-[#1A2342]" style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: "1.1rem" }}>{fmtUSD(planTotals.expected)}</div>
+                <div className="text-[10px] uppercase tracking-[0.15em] text-[#1A2342]/50" style={{ fontFamily: "var(--font-body)" }}>{t("plan_total_expected")}</div>
+                <div className="text-[#1A2342]" style={{ fontFamily: "var(--font-heading)", fontSize: "1.1rem" }}>{fmtUSD(planTotals.expected)}</div>
               </div>
               <div className="p-3 md:border-r border-b md:border-b-0 border-[#1A2342]/15">
-                <div className="text-[10px] uppercase tracking-[0.15em] text-[#1A2342]/50" style={{ fontFamily: "'Manrope', sans-serif" }}>{t("plan_total_received")}</div>
-                <div className="text-[#C9A961]" style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: "1.1rem" }}>{fmtUSD(planTotals.received)}</div>
+                <div className="text-[10px] uppercase tracking-[0.15em] text-[#1A2342]/50" style={{ fontFamily: "var(--font-body)" }}>{t("plan_total_received")}</div>
+                <div className="text-[#C9A961]" style={{ fontFamily: "var(--font-heading)", fontSize: "1.1rem" }}>{fmtUSD(planTotals.received)}</div>
               </div>
               <div className="p-3 border-r border-[#1A2342]/15">
-                <div className="text-[10px] uppercase tracking-[0.15em] text-[#1A2342]/50" style={{ fontFamily: "'Manrope', sans-serif" }}>{t("plan_total_pending")}</div>
-                <div className="text-[#1A2342]" style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: "1.1rem" }}>{fmtUSD(planTotals.pending)}</div>
+                <div className="text-[10px] uppercase tracking-[0.15em] text-[#1A2342]/50" style={{ fontFamily: "var(--font-body)" }}>{t("plan_total_pending")}</div>
+                <div className="text-[#1A2342]" style={{ fontFamily: "var(--font-heading)", fontSize: "1.1rem" }}>{fmtUSD(planTotals.pending)}</div>
               </div>
               <div className="p-3">
-                <div className="text-[10px] uppercase tracking-[0.15em] text-[#1A2342]/50" style={{ fontFamily: "'Manrope', sans-serif" }}>{lang === "es" ? "Cuotas Pagadas" : "Installments Paid"}</div>
-                <div className="text-[#1A2342]" style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: "1.1rem" }}>{planTotals.paidCount}/{planTotals.count}</div>
+                <div className="text-[10px] uppercase tracking-[0.15em] text-[#1A2342]/50" style={{ fontFamily: "var(--font-body)" }}>{lang === "es" ? "Cuotas Pagadas" : "Installments Paid"}</div>
+                <div className="text-[#1A2342]" style={{ fontFamily: "var(--font-heading)", fontSize: "1.1rem" }}>{planTotals.paidCount}/{planTotals.count}</div>
               </div>
             </div>
           </div>
@@ -4251,7 +4660,7 @@ function ClientDetail({ client, onEdit, onEditTab, onAdvanceStage, onClose, onDe
             <SectionTitle subtitle={t("pi_history_sub")}>{t("pi_history_title")}</SectionTitle>
             <div className="border border-[#1A2342]/10 overflow-x-auto">
               <div className="min-w-[700px]">
-                <div className="grid grid-cols-12 gap-2 px-3 py-2 bg-[#1A2342]/5 text-[10px] uppercase tracking-[0.12em] text-[#1A2342]/60" style={{ fontFamily: "'Manrope', sans-serif" }}>
+                <div className="grid grid-cols-12 gap-2 px-3 py-2 bg-[#1A2342]/5 text-[10px] uppercase tracking-[0.12em] text-[#1A2342]/60" style={{ fontFamily: "var(--font-body)" }}>
                   <div className="col-span-1">{t("pic_issue_date")}</div>
                   <div className="col-span-4">{t("pic_reference")}</div>
                   <div className="col-span-2 text-right">{t("pic_amount_expected")}</div>
@@ -4265,7 +4674,7 @@ function ClientDetail({ client, onEdit, onEditTab, onAdvanceStage, onClose, onDe
                     ? Math.floor((today - issueDate) / (1000 * 60 * 60 * 24))
                     : null;
                   return (
-                    <div key={inst.id} className="grid grid-cols-12 gap-2 px-3 py-2 border-t border-[#1A2342]/10 items-center text-sm" style={{ fontFamily: "'Manrope', sans-serif" }}>
+                    <div key={inst.id} className="grid grid-cols-12 gap-2 px-3 py-2 border-t border-[#1A2342]/10 items-center text-sm" style={{ fontFamily: "var(--font-body)" }}>
                       <div className="col-span-1 text-[#1A2342]/60 text-[11px]">{fmtDate(inst.issueDate)}</div>
                       <div className="col-span-4">
                         <div className="text-[#1A2342] font-mono text-[11px]">{inst.reference}</div>
@@ -4286,7 +4695,7 @@ function ClientDetail({ client, onEdit, onEditTab, onAdvanceStage, onClose, onDe
                         {inst.status !== "confirmed" && inst.status !== "cancelled" && onConfirmInstruction && (
                           <button onClick={() => onConfirmInstruction(inst.id)}
                             className="text-[11px] uppercase tracking-[0.1em] px-3 py-1.5 bg-[#C9A961] text-[#1A2342] hover:bg-[#B8984F] transition-colors font-medium"
-                            style={{ fontFamily: "'Manrope', sans-serif" }}>
+                            style={{ fontFamily: "var(--font-body)" }}>
                             {t("pi_history_confirm_btn")}
                           </button>
                         )}
@@ -4314,25 +4723,25 @@ function ClientDetail({ client, onEdit, onEditTab, onAdvanceStage, onClose, onDe
             </div>
             <div className="p-4 bg-[#FDFBF6] border border-[#1A2342]/10 grid grid-cols-2 md:grid-cols-4 gap-4">
               <div>
-                <div className="text-[10px] uppercase tracking-[0.15em] text-[#1A2342]/50 mb-1" style={{ fontFamily: "'Manrope', sans-serif" }}>{t("lbl_commission_total")}</div>
-                <div className="text-[#1A2342]" style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: "1.2rem" }}>{fmtUSD(c.totalCommission)}</div>
-                <div className="text-[10px] text-[#1A2342]/50" style={{ fontFamily: "'Manrope', sans-serif" }}>{c.pct}%</div>
+                <div className="text-[10px] uppercase tracking-[0.15em] text-[#1A2342]/50 mb-1" style={{ fontFamily: "var(--font-body)" }}>{t("lbl_commission_total")}</div>
+                <div className="text-[#1A2342]" style={{ fontFamily: "var(--font-heading)", fontSize: "1.2rem" }}>{fmtUSD(c.totalCommission)}</div>
+                <div className="text-[10px] text-[#1A2342]/50" style={{ fontFamily: "var(--font-body)" }}>{c.pct}%</div>
               </div>
               <div>
-                <div className="text-[10px] uppercase tracking-[0.15em] text-[#1A2342]/50 mb-1" style={{ fontFamily: "'Manrope', sans-serif" }}>{t("lbl_commission_earned")}</div>
-                <div className="text-[#C9A961]" style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: "1.2rem" }}>{fmtUSD(c.earnedByBroker)}</div>
+                <div className="text-[10px] uppercase tracking-[0.15em] text-[#1A2342]/50 mb-1" style={{ fontFamily: "var(--font-body)" }}>{t("lbl_commission_earned")}</div>
+                <div className="text-[#C9A961]" style={{ fontFamily: "var(--font-heading)", fontSize: "1.2rem" }}>{fmtUSD(c.earnedByBroker)}</div>
               </div>
               <div>
-                <div className="text-[10px] uppercase tracking-[0.15em] text-[#1A2342]/50 mb-1" style={{ fontFamily: "'Manrope', sans-serif" }}>{t("lbl_commission_paid")}</div>
-                <div className="text-[#1A2342]" style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: "1.2rem" }}>{fmtUSD(c.paidToBroker)}</div>
+                <div className="text-[10px] uppercase tracking-[0.15em] text-[#1A2342]/50 mb-1" style={{ fontFamily: "var(--font-body)" }}>{t("lbl_commission_paid")}</div>
+                <div className="text-[#1A2342]" style={{ fontFamily: "var(--font-heading)", fontSize: "1.2rem" }}>{fmtUSD(c.paidToBroker)}</div>
               </div>
               <div>
-                <div className="text-[10px] uppercase tracking-[0.15em] text-[#1A2342]/50 mb-1" style={{ fontFamily: "'Manrope', sans-serif" }}>{t("lbl_commission_pending")}</div>
-                <div className={c.pendingToBroker > 0 ? "text-[#D4A24C]" : "text-[#1A2342]"} style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: "1.2rem" }}>{fmtUSD(c.pendingToBroker)}</div>
+                <div className="text-[10px] uppercase tracking-[0.15em] text-[#1A2342]/50 mb-1" style={{ fontFamily: "var(--font-body)" }}>{t("lbl_commission_pending")}</div>
+                <div className={c.pendingToBroker > 0 ? "text-[#D4A24C]" : "text-[#1A2342]"} style={{ fontFamily: "var(--font-heading)", fontSize: "1.2rem" }}>{fmtUSD(c.pendingToBroker)}</div>
               </div>
             </div>
             {client.brokerNotes && (
-              <div className="p-3 bg-[#FDFBF6] text-sm text-[#1A2342] whitespace-pre-wrap border border-[#1A2342]/10 mt-3" style={{ fontFamily: "'Manrope', sans-serif" }}>
+              <div className="p-3 bg-[#FDFBF6] text-sm text-[#1A2342] whitespace-pre-wrap border border-[#1A2342]/10 mt-3" style={{ fontFamily: "var(--font-body)" }}>
                 {client.brokerNotes}
               </div>
             )}
@@ -4351,7 +4760,7 @@ function ClientDetail({ client, onEdit, onEditTab, onAdvanceStage, onClose, onDe
                 <Paperclip className="w-4 h-4 text-[#4A6FA5] flex-shrink-0" strokeWidth={1.5} />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <span className="text-sm text-[#1A2342] truncate" style={{ fontFamily: "'Manrope', sans-serif" }}>
+                    <span className="text-sm text-[#1A2342] truncate" style={{ fontFamily: "var(--font-body)" }}>
                       {doc.name}
                     </span>
                     <Badge color="#1A2342" bg="#D9DDE8">
@@ -4366,7 +4775,7 @@ function ClientDetail({ client, onEdit, onEditTab, onAdvanceStage, onClose, onDe
                       )) || doc.type}
                     </Badge>
                   </div>
-                  <div className="text-[11px] text-[#1A2342]/50" style={{ fontFamily: "'Manrope', sans-serif" }}>
+                  <div className="text-[11px] text-[#1A2342]/50" style={{ fontFamily: "var(--font-body)" }}>
                     {fmtDate(doc.uploadedAt)}
                   </div>
                 </div>
@@ -4386,7 +4795,7 @@ function ClientDetail({ client, onEdit, onEditTab, onAdvanceStage, onClose, onDe
         </div>
       )}
 
-      <div className="text-[11px] text-[#1A2342]/40 pt-6 border-t border-[#1A2342]/10" style={{ fontFamily: "'Manrope', sans-serif" }}>
+      <div className="text-[11px] text-[#1A2342]/40 pt-6 border-t border-[#1A2342]/10" style={{ fontFamily: "var(--font-body)" }}>
         {t("lbl_id_label")}: {client.id} · {t("lbl_created")}: {fmtDate(client.createdAt)} · {t("lbl_updated")}: {fmtDate(client.updatedAt)}
       </div>
     </div>
@@ -4461,11 +4870,11 @@ function Dashboard({ clients, onNewClient, onExport, onGoToClients, onGoToVillas
       {/* Hero */}
       <div className="relative overflow-hidden">
         <div className="relative z-10 py-2">
-          <div className="text-[10px] uppercase tracking-[0.3em] text-[#1A2342]/50 mb-2" style={{ fontFamily: "'Manrope', sans-serif" }}>{t("tagline")}</div>
-          <h1 className="text-[#1A2342] mb-3" style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: "3rem", fontWeight: 400, letterSpacing: "0.02em", lineHeight: 1 }}>
+          <div className="text-[10px] uppercase tracking-[0.3em] text-[#1A2342]/50 mb-2" style={{ fontFamily: "var(--font-body)" }}>{t("tagline")}</div>
+          <h1 className="text-[#1A2342] mb-3" style={{ fontFamily: "var(--font-heading)", fontSize: "3rem", fontWeight: 400, letterSpacing: "0.02em", lineHeight: 1 }}>
             AMBAR <span className="text-[#4A6FA5]">Longevity Estate</span>
           </h1>
-          <p className="text-[#1A2342]/60 text-sm max-w-xl" style={{ fontFamily: "'Manrope', sans-serif" }}>
+          <p className="text-[#1A2342]/60 text-sm max-w-xl" style={{ fontFamily: "var(--font-body)" }}>
             {t("subtitle")}
           </p>
         </div>
@@ -4480,9 +4889,9 @@ function Dashboard({ clients, onNewClient, onExport, onGoToClients, onGoToVillas
           { label: t("dash_villas_assigned"), value: `${stats.soldLots}/35`, sub: `${stats.availableLots} ${t("dash_villas_assigned_sub")}` },
         ].map((k, i) => (
           <div key={i} className={`p-4 md:p-6 ${i % 2 === 0 ? "md:border-r border-r border-[#1A2342]/15" : ""} ${i < 2 ? "border-b md:border-b-0 border-[#1A2342]/15" : ""} ${i === 2 ? "md:border-r border-[#1A2342]/15" : ""}`}>
-            <div className="text-[10px] uppercase tracking-[0.2em] text-[#1A2342]/50 mb-3" style={{ fontFamily: "'Manrope', sans-serif" }}>{k.label}</div>
-            <div className="text-[#1A2342] mb-1" style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: "1.75rem", fontWeight: 500 }}>{k.value}</div>
-            <div className="text-[11px] text-[#1A2342]/50" style={{ fontFamily: "'Manrope', sans-serif" }}>{k.sub}</div>
+            <div className="text-[10px] uppercase tracking-[0.2em] text-[#1A2342]/50 mb-3" style={{ fontFamily: "var(--font-body)" }}>{k.label}</div>
+            <div className="text-[#1A2342] mb-1" style={{ fontFamily: "var(--font-heading)", fontSize: "1.75rem", fontWeight: 500 }}>{k.value}</div>
+            <div className="text-[11px] text-[#1A2342]/50" style={{ fontFamily: "var(--font-body)" }}>{k.sub}</div>
           </div>
         ))}
       </div>
@@ -4495,10 +4904,10 @@ function Dashboard({ clients, onNewClient, onExport, onGoToClients, onGoToVillas
               className="p-4 bg-[#F3DDD9] border-l-4 border-[#B04B3F] flex items-start gap-3 text-left hover:bg-[#EECFC8] transition-colors">
               <AlertTriangle className="w-5 h-5 text-[#B04B3F] flex-shrink-0 mt-0.5" strokeWidth={1.5} />
               <div className="flex-1">
-                <div className="text-sm font-semibold text-[#B04B3F]" style={{ fontFamily: "'Manrope', sans-serif" }}>
+                <div className="text-sm font-semibold text-[#B04B3F]" style={{ fontFamily: "var(--font-body)" }}>
                   {stats.totalOverdue} {t("alert_overdue_installments")}
                 </div>
-                <div className="text-[11px] text-[#1A2342]/70 mt-0.5" style={{ fontFamily: "'Manrope', sans-serif" }}>
+                <div className="text-[11px] text-[#1A2342]/70 mt-0.5" style={{ fontFamily: "var(--font-body)" }}>
                   {stats.overdueClients.slice(0, 3).map(c => c.name).join(" · ")}
                   {stats.overdueClients.length > 3 ? ` · +${stats.overdueClients.length - 3}` : ""}
                 </div>
@@ -4510,10 +4919,10 @@ function Dashboard({ clients, onNewClient, onExport, onGoToClients, onGoToVillas
               className="p-4 bg-[#F4EBD4] border-l-4 border-[#C9A961] flex items-start gap-3 text-left hover:bg-[#EEE2C2] transition-colors">
               <Clock className="w-5 h-5 text-[#C9A961] flex-shrink-0 mt-0.5" strokeWidth={1.5} />
               <div className="flex-1">
-                <div className="text-sm font-semibold text-[#8B7430]" style={{ fontFamily: "'Manrope', sans-serif" }}>
+                <div className="text-sm font-semibold text-[#8B7430]" style={{ fontFamily: "var(--font-body)" }}>
                   {stats.totalUpcoming} {t("alert_upcoming_installments")}
                 </div>
-                <div className="text-[11px] text-[#1A2342]/70 mt-0.5" style={{ fontFamily: "'Manrope', sans-serif" }}>
+                <div className="text-[11px] text-[#1A2342]/70 mt-0.5" style={{ fontFamily: "var(--font-body)" }}>
                   {stats.upcomingClients.slice(0, 3).map(c => c.name).join(" · ")}
                   {stats.upcomingClients.length > 3 ? ` · +${stats.upcomingClients.length - 3}` : ""}
                 </div>
@@ -4525,10 +4934,10 @@ function Dashboard({ clients, onNewClient, onExport, onGoToClients, onGoToVillas
               className="p-4 bg-[#F4EBD4] border-l-4 border-[#8B7430] flex items-start gap-3 text-left hover:bg-[#EEE2C2] transition-colors">
               <Receipt className="w-5 h-5 text-[#8B7430] flex-shrink-0 mt-0.5" strokeWidth={1.5} />
               <div className="flex-1">
-                <div className="text-sm font-semibold text-[#8B7430]" style={{ fontFamily: "'Manrope', sans-serif" }}>
+                <div className="text-sm font-semibold text-[#8B7430]" style={{ fontFamily: "var(--font-body)" }}>
                   {stats.totalStaleInstructions} {t("alert_instructions_pending")}
                 </div>
-                <div className="text-[11px] text-[#1A2342]/70 mt-0.5" style={{ fontFamily: "'Manrope', sans-serif" }}>
+                <div className="text-[11px] text-[#1A2342]/70 mt-0.5" style={{ fontFamily: "var(--font-body)" }}>
                   {stats.staleInstructionClients.slice(0, 3).map(c => c.name).join(" · ")}
                   {stats.staleInstructionClients.length > 3 ? ` · +${stats.staleInstructionClients.length - 3}` : ""}
                 </div>
@@ -4567,19 +4976,19 @@ function Dashboard({ clients, onNewClient, onExport, onGoToClients, onGoToVillas
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="text-xs uppercase tracking-[0.1em] font-semibold"
-                            style={{ color: isUrgent ? "#B04B3F" : typeCfg.color, fontFamily: "'Manrope', sans-serif" }}>
+                            style={{ color: isUrgent ? "#B04B3F" : typeCfg.color, fontFamily: "var(--font-body)" }}>
                             {dateLabel}
                           </span>
                           {ev.time && (
-                            <span className="text-xs text-[#1A2342]/60" style={{ fontFamily: "'Manrope', sans-serif" }}>
+                            <span className="text-xs text-[#1A2342]/60" style={{ fontFamily: "var(--font-body)" }}>
                               · {ev.time}
                             </span>
                           )}
                         </div>
-                        <div className="text-sm text-[#1A2342] font-medium mt-1 truncate" style={{ fontFamily: "'Manrope', sans-serif" }}>
+                        <div className="text-sm text-[#1A2342] font-medium mt-1 truncate" style={{ fontFamily: "var(--font-body)" }}>
                           {ev.type === "custom" && ev.customLabel ? ev.customLabel : (lang === "es" ? typeCfg.label : typeCfg.labelEn)}
                         </div>
-                        <div className="text-[11px] text-[#1A2342]/60 mt-0.5 truncate" style={{ fontFamily: "'Manrope', sans-serif" }}>
+                        <div className="text-[11px] text-[#1A2342]/60 mt-0.5 truncate" style={{ fontFamily: "var(--font-body)" }}>
                           {ev.clientName}
                         </div>
                       </div>
@@ -4589,7 +4998,7 @@ function Dashboard({ clients, onNewClient, onExport, onGoToClients, onGoToVillas
               })}
             </div>
             {upcomingEvents.length > 6 && (
-              <div className="text-[11px] text-[#1A2342]/50 text-center mt-3" style={{ fontFamily: "'Manrope', sans-serif" }}>
+              <div className="text-[11px] text-[#1A2342]/50 text-center mt-3" style={{ fontFamily: "var(--font-body)" }}>
                 +{upcomingEvents.length - 6} {lang === "es" ? "más" : "more"}
               </div>
             )}
@@ -4603,16 +5012,16 @@ function Dashboard({ clients, onNewClient, onExport, onGoToClients, onGoToVillas
           <SectionTitle subtitle={t("sec_commission_sub")}>{t("sec_commission")}</SectionTitle>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-0 border border-[#1A2342]/15">
             <div className="p-5 border-b sm:border-b-0 sm:border-r border-[#1A2342]/15">
-              <div className="text-[10px] uppercase tracking-[0.2em] text-[#1A2342]/50 mb-2" style={{ fontFamily: "'Manrope', sans-serif" }}>{t("lbl_commission_total")}</div>
-              <div className="text-[#1A2342]" style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: "1.75rem", fontWeight: 500 }}>{fmtUSD(stats.totalCommissions)}</div>
+              <div className="text-[10px] uppercase tracking-[0.2em] text-[#1A2342]/50 mb-2" style={{ fontFamily: "var(--font-body)" }}>{t("lbl_commission_total")}</div>
+              <div className="text-[#1A2342]" style={{ fontFamily: "var(--font-heading)", fontSize: "1.75rem", fontWeight: 500 }}>{fmtUSD(stats.totalCommissions)}</div>
             </div>
             <div className="p-5 border-b sm:border-b-0 sm:border-r border-[#1A2342]/15">
-              <div className="text-[10px] uppercase tracking-[0.2em] text-[#1A2342]/50 mb-2" style={{ fontFamily: "'Manrope', sans-serif" }}>{t("lbl_commission_earned")}</div>
-              <div className="text-[#C9A961]" style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: "1.75rem", fontWeight: 500 }}>{fmtUSD(stats.earnedCommissions)}</div>
+              <div className="text-[10px] uppercase tracking-[0.2em] text-[#1A2342]/50 mb-2" style={{ fontFamily: "var(--font-body)" }}>{t("lbl_commission_earned")}</div>
+              <div className="text-[#C9A961]" style={{ fontFamily: "var(--font-heading)", fontSize: "1.75rem", fontWeight: 500 }}>{fmtUSD(stats.earnedCommissions)}</div>
             </div>
             <div className="p-5">
-              <div className="text-[10px] uppercase tracking-[0.2em] text-[#1A2342]/50 mb-2" style={{ fontFamily: "'Manrope', sans-serif" }}>{t("lbl_commission_pending")}</div>
-              <div className={stats.pendingCommissions > 0 ? "text-[#D4A24C]" : "text-[#1A2342]"} style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: "1.75rem", fontWeight: 500 }}>{fmtUSD(stats.pendingCommissions)}</div>
+              <div className="text-[10px] uppercase tracking-[0.2em] text-[#1A2342]/50 mb-2" style={{ fontFamily: "var(--font-body)" }}>{t("lbl_commission_pending")}</div>
+              <div className={stats.pendingCommissions > 0 ? "text-[#D4A24C]" : "text-[#1A2342]"} style={{ fontFamily: "var(--font-heading)", fontSize: "1.75rem", fontWeight: 500 }}>{fmtUSD(stats.pendingCommissions)}</div>
             </div>
           </div>
         </div>
@@ -4627,8 +5036,8 @@ function Dashboard({ clients, onNewClient, onExport, onGoToClients, onGoToVillas
             const count = stats.byStatus[s] || 0;
             return (
               <div key={s} className="p-3 border border-[#1A2342]/10" style={{ backgroundColor: cfg.bg }}>
-                <div className="text-[9px] uppercase tracking-[0.12em] mb-1" style={{ color: cfg.color, fontFamily: "'Manrope', sans-serif" }}>{t("status_" + s)}</div>
-                <div className="text-2xl text-[#1A2342]" style={{ fontFamily: "'Cormorant Garamond', serif", fontWeight: 500 }}>{count}</div>
+                <div className="text-[9px] uppercase tracking-[0.12em] mb-1" style={{ color: cfg.color, fontFamily: "var(--font-body)" }}>{t("status_" + s)}</div>
+                <div className="text-2xl text-[#1A2342]" style={{ fontFamily: "var(--font-heading)", fontWeight: 500 }}>{count}</div>
               </div>
             );
           })}
@@ -4640,16 +5049,16 @@ function Dashboard({ clients, onNewClient, onExport, onGoToClients, onGoToVillas
         <div>
           <SectionTitle>{t("dash_recent_activity")}</SectionTitle>
           {recentClients.length === 0 ? (
-            <div className="text-sm text-[#1A2342]/50 py-6" style={{ fontFamily: "'Manrope', sans-serif" }}>{t("dash_no_activity")}</div>
+            <div className="text-sm text-[#1A2342]/50 py-6" style={{ fontFamily: "var(--font-body)" }}>{t("dash_no_activity")}</div>
           ) : (
             <div className="space-y-1">
               {recentClients.map(c => (
                 <button key={c.id} onClick={onGoToClients} className="w-full flex items-center gap-3 p-3 hover:bg-[#1A2342]/5 border border-transparent hover:border-[#1A2342]/10 transition-all text-left">
                   <div className="flex-1 min-w-0">
-                    <div className="text-sm text-[#1A2342] truncate" style={{ fontFamily: "'Manrope', sans-serif" }}>
+                    <div className="text-sm text-[#1A2342] truncate" style={{ fontFamily: "var(--font-body)" }}>
                       {c.fullName || c.companyName || t("cd_unnamed")}
                     </div>
-                    <div className="text-[11px] text-[#1A2342]/50" style={{ fontFamily: "'Manrope', sans-serif" }}>
+                    <div className="text-[11px] text-[#1A2342]/50" style={{ fontFamily: "var(--font-body)" }}>
                       {c.lotNumber ? `Villa #${c.lotNumber} · ` : ""}{fmtDate(c.updatedAt || c.createdAt)}
                     </div>
                   </div>
@@ -4663,7 +5072,7 @@ function Dashboard({ clients, onNewClient, onExport, onGoToClients, onGoToVillas
         <div>
           <SectionTitle>{t("dash_top_pipeline")}</SectionTitle>
           {topPipeline.length === 0 ? (
-            <div className="text-sm text-[#1A2342]/50 py-6" style={{ fontFamily: "'Manrope', sans-serif" }}>{t("dash_no_pipeline")}</div>
+            <div className="text-sm text-[#1A2342]/50 py-6" style={{ fontFamily: "var(--font-body)" }}>{t("dash_no_pipeline")}</div>
           ) : (
             <div className="space-y-1">
               {topPipeline.map(c => {
@@ -4672,10 +5081,10 @@ function Dashboard({ clients, onNewClient, onExport, onGoToClients, onGoToVillas
                 return (
                   <div key={c.id} className="p-3 border border-[#1A2342]/10">
                     <div className="flex items-center justify-between mb-2">
-                      <div className="text-sm text-[#1A2342] truncate flex-1" style={{ fontFamily: "'Manrope', sans-serif" }}>
+                      <div className="text-sm text-[#1A2342] truncate flex-1" style={{ fontFamily: "var(--font-body)" }}>
                         {c.fullName || c.companyName}
                       </div>
-                      <div className="text-sm text-[#1A2342] ml-2" style={{ fontFamily: "'Manrope', sans-serif" }}>{fmtUSD(p.total)}</div>
+                      <div className="text-sm text-[#1A2342] ml-2" style={{ fontFamily: "var(--font-body)" }}>{fmtUSD(p.total)}</div>
                     </div>
                     <ProgressBar percent={pct} color={STATUS_CONFIG[c.status]?.color} />
                   </div>
@@ -4719,16 +5128,16 @@ function VillasView({ clients, onClickClient }) {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-[#1A2342] mb-2" style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: "2.5rem", fontWeight: 400, letterSpacing: "0.02em" }}>
+        <h1 className="text-[#1A2342] mb-2" style={{ fontFamily: "var(--font-heading)", fontSize: "2.5rem", fontWeight: 400, letterSpacing: "0.02em" }}>
           {t("villa_map_title")}
         </h1>
-        <p className="text-sm text-[#1A2342]/60" style={{ fontFamily: "'Manrope', sans-serif" }}>
+        <p className="text-sm text-[#1A2342]/60" style={{ fontFamily: "var(--font-body)" }}>
           {Object.keys(lots).length} {lang === "es" ? "lotes" : "lots"} · 12 acres · Blue Amber Zone
         </p>
       </div>
 
       {/* Legend */}
-      <div className="flex gap-4 flex-wrap text-xs" style={{ fontFamily: "'Manrope', sans-serif" }}>
+      <div className="flex gap-4 flex-wrap text-xs" style={{ fontFamily: "var(--font-body)" }}>
         <div className="flex items-center gap-2"><div className="w-3 h-3 border border-[#1A2342]/30 bg-[#FDFBF6]" /><span className="text-[#1A2342]/70">{t("villa_legend_available")}</span></div>
         {STATUS_ORDER.filter(s => s !== "cancelled" && s !== "lead").map(s => {
           const cfg = STATUS_CONFIG[s];
@@ -4753,17 +5162,17 @@ function VillasView({ clients, onClickClient }) {
                 borderWidth: cfg ? "1px" : "1px",
               }}>
               <div className="flex items-center justify-between mb-1">
-                <span className="text-xs text-[#1A2342]/60" style={{ fontFamily: "'Manrope', sans-serif" }}>#{n}</span>
+                <span className="text-xs text-[#1A2342]/60" style={{ fontFamily: "var(--font-body)" }}>#{n}</span>
                 {model && <div className="w-2 h-2" style={{ backgroundColor: model.color }} />}
               </div>
-              <div className="text-2xl text-[#1A2342] mb-auto" style={{ fontFamily: "'Cormorant Garamond', serif" }}>
+              <div className="text-2xl text-[#1A2342] mb-auto" style={{ fontFamily: "var(--font-heading)" }}>
                 {v.client ? "●" : "○"}
               </div>
-              <div className="text-[9px] text-[#1A2342]/50" style={{ fontFamily: "'Manrope', sans-serif" }}>
+              <div className="text-[9px] text-[#1A2342]/50" style={{ fontFamily: "var(--font-body)" }}>
                 {fmtArea(lots[n], lang)}
               </div>
               {v.client && (
-                <div className="text-[10px] text-[#1A2342] truncate mt-1" style={{ fontFamily: "'Manrope', sans-serif" }}>
+                <div className="text-[10px] text-[#1A2342] truncate mt-1" style={{ fontFamily: "var(--font-body)" }}>
                   {(v.client.fullName || v.client.companyName || "").split(" ")[0]}
                 </div>
               )}
@@ -4782,9 +5191,9 @@ function VillasView({ clients, onClickClient }) {
               <div key={k} className="p-4 border border-[#1A2342]/15">
                 <div className="flex items-center gap-2 mb-2">
                   <div className="w-3 h-3" style={{ backgroundColor: m.color }} />
-                  <span className="text-[#1A2342]" style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: "1.1rem" }}>{m.name}</span>
+                  <span className="text-[#1A2342]" style={{ fontFamily: "var(--font-heading)", fontSize: "1.1rem" }}>{m.name}</span>
                 </div>
-                <div className="text-[11px] text-[#1A2342]/60 space-y-0.5" style={{ fontFamily: "'Manrope', sans-serif" }}>
+                <div className="text-[11px] text-[#1A2342]/60 space-y-0.5" style={{ fontFamily: "var(--font-body)" }}>
                   <div>{Number(m.sqft || 0).toLocaleString()} ft² · {Number(m.sqm || 0).toLocaleString()} m²</div>
                   <div>{m.bedrooms} {t("villa_model_bedrooms")} · {m.bathrooms} {t("villa_model_bathrooms")}</div>
                   <div className="text-[#1A2342] font-medium pt-1">{t("villa_model_from")} {fmtUSD(base)}</div>
@@ -4835,8 +5244,8 @@ function ClientsList({ clients, onSelect, onNew, onExport, onDelete }) {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
         <div>
-          <h1 className="text-[#1A2342]" style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: "2.5rem", fontWeight: 400, letterSpacing: "0.02em" }}>{t("clients_title")}</h1>
-          <p className="text-sm text-[#1A2342]/60 mt-1" style={{ fontFamily: "'Manrope', sans-serif" }}>
+          <h1 className="text-[#1A2342]" style={{ fontFamily: "var(--font-heading)", fontSize: "2.5rem", fontWeight: 400, letterSpacing: "0.02em" }}>{t("clients_title")}</h1>
+          <p className="text-sm text-[#1A2342]/60 mt-1" style={{ fontFamily: "var(--font-body)" }}>
             {filtered.length} {t("clients_count")} {clients.length} {t("clients_count_label")}
           </p>
         </div>
@@ -4852,21 +5261,21 @@ function ClientsList({ clients, onSelect, onNew, onExport, onDelete }) {
           <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-[#1A2342]/40" strokeWidth={1.8} />
           <input value={search} onChange={e => setSearch(e.target.value)} placeholder={t("clients_search_ph")}
             className="w-full pl-9 pr-3 py-2 bg-transparent border-none text-sm focus:outline-none placeholder:text-[#1A2342]/40"
-            style={{ fontFamily: "'Manrope', sans-serif" }} />
+            style={{ fontFamily: "var(--font-body)" }} />
         </div>
         <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}
-          className="px-3 py-2 bg-transparent border border-[#1A2342]/15 text-sm" style={{ fontFamily: "'Manrope', sans-serif" }}>
+          className="px-3 py-2 bg-transparent border border-[#1A2342]/15 text-sm" style={{ fontFamily: "var(--font-body)" }}>
           <option value="all">{t("clients_filter_all_status")}</option>
           {STATUS_ORDER.map(s => <option key={s} value={s}>{t("status_" + s)}</option>)}
         </select>
         <select value={filterType} onChange={e => setFilterType(e.target.value)}
-          className="px-3 py-2 bg-transparent border border-[#1A2342]/15 text-sm" style={{ fontFamily: "'Manrope', sans-serif" }}>
+          className="px-3 py-2 bg-transparent border border-[#1A2342]/15 text-sm" style={{ fontFamily: "var(--font-body)" }}>
           <option value="all">{t("clients_filter_all_types")}</option>
           <option value="individual">{t("clients_individual")}</option>
           <option value="entity">{t("clients_entity")}</option>
         </select>
         <select value={sortBy} onChange={e => setSortBy(e.target.value)}
-          className="px-3 py-2 bg-transparent border border-[#1A2342]/15 text-sm" style={{ fontFamily: "'Manrope', sans-serif" }}>
+          className="px-3 py-2 bg-transparent border border-[#1A2342]/15 text-sm" style={{ fontFamily: "var(--font-body)" }}>
           <option value="updated">{t("clients_sort_updated")}</option>
           <option value="name">{t("clients_sort_name")}</option>
           <option value="price">{t("clients_sort_price")}</option>
@@ -4882,7 +5291,7 @@ function ClientsList({ clients, onSelect, onNew, onExport, onDelete }) {
       ) : (
         <div className="border border-[#1A2342]/10 overflow-x-auto">
           <div className="min-w-[800px]">
-          <div className="grid grid-cols-12 gap-3 px-4 py-3 bg-[#1A2342]/5 text-[10px] uppercase tracking-[0.12em] text-[#1A2342]/60" style={{ fontFamily: "'Manrope', sans-serif" }}>
+          <div className="grid grid-cols-12 gap-3 px-4 py-3 bg-[#1A2342]/5 text-[10px] uppercase tracking-[0.12em] text-[#1A2342]/60" style={{ fontFamily: "var(--font-body)" }}>
             <div className="col-span-3">{t("col_client")}</div>
             <div className="col-span-2">{t("col_status")}</div>
             <div className="col-span-1 text-center">{t("col_villa")}</div>
@@ -4897,7 +5306,7 @@ function ClientsList({ clients, onSelect, onNew, onExport, onDelete }) {
             return (
               <div key={c.id} onClick={() => onSelect(c.id)}
                 className="grid grid-cols-12 gap-3 px-4 py-3 border-t border-[#1A2342]/10 hover:bg-[#1A2342]/5 cursor-pointer items-center transition-colors"
-                style={{ fontFamily: "'Manrope', sans-serif" }}>
+                style={{ fontFamily: "var(--font-body)" }}>
                 <div className="col-span-3 min-w-0">
                   <div className="flex items-center gap-2">
                     {c.type === "entity" ? <Building2 className="w-3.5 h-3.5 text-[#1A2342]/40 flex-shrink-0" strokeWidth={1.5} /> : <UserCircle className="w-3.5 h-3.5 text-[#1A2342]/40 flex-shrink-0" strokeWidth={1.5} />}
@@ -4959,13 +5368,16 @@ function SettingsView({ settings, onSave }) {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-[#1A2342]" style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: "2.5rem", fontWeight: 400, letterSpacing: "0.02em" }}>
+        <h1 className="text-[#1A2342]" style={{ fontFamily: "var(--font-heading)", fontSize: "2.5rem", fontWeight: 400, letterSpacing: "0.02em" }}>
           {t("settings_title")}
         </h1>
-        <p className="text-sm text-[#1A2342]/60 mt-1" style={{ fontFamily: "'Manrope', sans-serif" }}>
+        <p className="text-sm text-[#1A2342]/60 mt-1" style={{ fontFamily: "var(--font-body)" }}>
           {t("settings_sub")}
         </p>
       </div>
+
+      {/* Branding & Fonts */}
+      <BrandingEditor draft={draft} setDraft={setDraft} setSaved={setSaved} />
 
       {/* Company Info */}
       <div>
@@ -4995,7 +5407,7 @@ function SettingsView({ settings, onSave }) {
             <Input label="IBAN" value={draft.bank.iban} onChange={v => update("bank","iban",v)} placeholder={lang === "es" ? "Si aplica" : "If applicable"} />
           </div>
           <div className="border-t border-[#1A2342]/10 pt-4">
-            <div className="text-[10px] uppercase tracking-[0.12em] text-[#1A2342]/60 mb-3" style={{ fontFamily: "'Manrope', sans-serif" }}>
+            <div className="text-[10px] uppercase tracking-[0.12em] text-[#1A2342]/60 mb-3" style={{ fontFamily: "var(--font-body)" }}>
               {t("settings_intermediary")}
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -5040,7 +5452,7 @@ function SettingsView({ settings, onSave }) {
           <div>
             <Input label={t("settings_default_commission")} type="number" value={draft.pricing?.defaultCommissionPct ?? ""}
               onChange={v => update("pricing","defaultCommissionPct", Number(v) || 0)} placeholder="5" />
-            <div className="text-[11px] text-[#1A2342]/50 mt-1" style={{ fontFamily: "'Manrope', sans-serif" }}>
+            <div className="text-[11px] text-[#1A2342]/50 mt-1" style={{ fontFamily: "var(--font-body)" }}>
               {t("settings_default_commission_sub")}
             </div>
           </div>
@@ -5055,11 +5467,110 @@ function SettingsView({ settings, onSave }) {
 
       <div className="flex items-center justify-end gap-3 pt-4 border-t border-[#1A2342]/10">
         {saved && (
-          <span className="text-xs text-[#2D5E3E] flex items-center gap-1" style={{ fontFamily: "'Manrope', sans-serif" }}>
+          <span className="text-xs text-[#2D5E3E] flex items-center gap-1" style={{ fontFamily: "var(--font-body)" }}>
             <Check className="w-3.5 h-3.5" strokeWidth={2} /> {t("saved")}
           </span>
         )}
         <Button onClick={save} variant="primary" icon={Check}>{t("settings_save")}</Button>
+      </div>
+    </div>
+  );
+}
+
+// ------------------------- Branding Editor -------------------------
+
+function BrandingEditor({ draft, setDraft, setSaved }) {
+  const { t } = useT();
+  const branding = { ...DEFAULT_BRANDING, ...(draft.branding || {}) };
+  const fileRef = React.useRef(null);
+
+  const update = (field, value) => {
+    setDraft(d => ({ ...d, branding: { ...DEFAULT_BRANDING, ...(d.branding || {}), [field]: value } }));
+    setSaved(false);
+  };
+
+  // Downscale to max 400px and normalize to PNG so the logo stays small in
+  // settings storage and embeds cleanly in generated PDFs
+  const onLogoFile = (file) => {
+    if (!file) return;
+    if (!/^image\/(png|jpeg)$/.test(file.type)) { alert(t("branding_logo_invalid")); return; }
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      const MAX = 400;
+      const scale = Math.min(1, MAX / Math.max(img.width, img.height));
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.max(1, Math.round(img.width * scale));
+      canvas.height = Math.max(1, Math.round(img.height * scale));
+      canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
+      update("logoDataUrl", canvas.toDataURL("image/png"));
+      URL.revokeObjectURL(url);
+    };
+    img.onerror = () => { alert(t("branding_logo_invalid")); URL.revokeObjectURL(url); };
+    img.src = url;
+  };
+
+  return (
+    <div>
+      {/* Load draft-selected fonts so the preview updates before saving */}
+      <style>{`@import url('${fontImportUrl(branding)}');`}</style>
+      <SectionTitle subtitle={t("settings_branding_sub")}>{t("settings_branding")}</SectionTitle>
+      <div className="p-4 bg-[#FDFBF6] border border-[#1A2342]/10 space-y-5">
+        {/* Logo */}
+        <div>
+          <div className="text-[10px] uppercase tracking-[0.12em] text-[#1A2342]/60 mb-2" style={{ fontFamily: "var(--font-body)" }}>
+            {t("branding_logo")}
+          </div>
+          <div className="flex items-center gap-4">
+            <div className="w-24 h-16 flex items-center justify-center bg-white border border-[#1A2342]/15 flex-shrink-0">
+              <img src={branding.logoDataUrl || "/logo.svg"} alt="logo" className="max-w-[80px] max-h-[52px] object-contain" />
+            </div>
+            <div className="space-y-2">
+              <div className="flex gap-2">
+                <Button variant="ghost" size="sm" icon={Upload} onClick={() => fileRef.current?.click()}>{t("branding_upload")}</Button>
+                {branding.logoDataUrl && (
+                  <Button variant="ghost" size="sm" icon={Trash2} onClick={() => update("logoDataUrl", "")}>{t("branding_remove")}</Button>
+                )}
+              </div>
+              <p className="text-[11px] text-[#1A2342]/50" style={{ fontFamily: "var(--font-body)" }}>{t("branding_logo_help")}</p>
+            </div>
+            <input ref={fileRef} type="file" accept="image/png,image/jpeg" className="hidden"
+              onChange={e => { onLogoFile(e.target.files?.[0]); e.target.value = ""; }} />
+          </div>
+        </div>
+
+        {/* Name & tagline */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <Input label={t("branding_display_name")} value={branding.displayName} onChange={v => update("displayName", v)} />
+            <div className="text-[11px] text-[#1A2342]/50 mt-1" style={{ fontFamily: "var(--font-body)" }}>{t("branding_display_name_help")}</div>
+          </div>
+          <Input label={t("branding_tagline")} value={branding.tagline} onChange={v => update("tagline", v)} />
+        </div>
+
+        {/* Fonts */}
+        <div className="border-t border-[#1A2342]/10 pt-4">
+          <div className="text-[10px] uppercase tracking-[0.12em] text-[#1A2342]/60 mb-3" style={{ fontFamily: "var(--font-body)" }}>
+            {t("branding_fonts")}
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Select label={t("branding_font_heading")} value={branding.fontHeading} onChange={v => update("fontHeading", v)}
+              options={FONT_LIBRARY.heading.map(f => ({ v: f.family, l: f.family }))} />
+            <Select label={t("branding_font_body")} value={branding.fontBody} onChange={v => update("fontBody", v)}
+              options={FONT_LIBRARY.body.map(f => ({ v: f.family, l: f.family }))} />
+          </div>
+          <div className="mt-4 p-4 bg-white border border-[#1A2342]/10">
+            <div className="text-[10px] uppercase tracking-[0.12em] text-[#1A2342]/40 mb-2" style={{ fontFamily: "var(--font-body)" }}>
+              {t("branding_preview")}
+            </div>
+            <div className="text-[#1A2342]" style={{ fontFamily: headingStack(branding), fontSize: "1.6rem", fontWeight: 500 }}>
+              {t("branding_preview_heading")}
+            </div>
+            <div className="text-sm text-[#1A2342]/80 mt-1" style={{ fontFamily: bodyStack(branding) }}>
+              {t("branding_preview_body")}
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -5119,7 +5630,7 @@ function VillaModelsEditor({ draft, setDraft, setSaved }) {
       <SectionTitle subtitle={t("settings_villa_models_sub")}>{t("settings_villa_models")}</SectionTitle>
 
       {modelEntries.length === 0 ? (
-        <div className="p-6 text-center text-sm text-[#1A2342]/50 bg-[#FDFBF6] border border-dashed border-[#1A2342]/20" style={{ fontFamily: "'Manrope', sans-serif" }}>
+        <div className="p-6 text-center text-sm text-[#1A2342]/50 bg-[#FDFBF6] border border-dashed border-[#1A2342]/20" style={{ fontFamily: "var(--font-body)" }}>
           {t("settings_model_no_models")}
         </div>
       ) : (
@@ -5128,7 +5639,7 @@ function VillaModelsEditor({ draft, setDraft, setSaved }) {
             <div key={id} className="p-3 bg-[#FDFBF6] border border-[#1A2342]/10">
               <div className="flex items-center gap-2 mb-2">
                 <div className="w-4 h-4 rounded" style={{ backgroundColor: m.color || "#4A6FA5" }} />
-                <span className="text-[10px] uppercase tracking-[0.12em] text-[#1A2342]/60 font-semibold" style={{ fontFamily: "'Manrope', sans-serif" }}>{id}</span>
+                <span className="text-[10px] uppercase tracking-[0.12em] text-[#1A2342]/60 font-semibold" style={{ fontFamily: "var(--font-body)" }}>{id}</span>
                 <button onClick={() => deleteModel(id)} className="ml-auto p-1 text-[#1A2342]/40 hover:text-[#B04B3F] hover:bg-[#B04B3F]/10 transition-colors">
                   <Trash2 className="w-3.5 h-3.5" strokeWidth={1.5} />
                 </button>
@@ -5140,7 +5651,7 @@ function VillaModelsEditor({ draft, setDraft, setSaved }) {
                 <Input label={t("settings_model_bedrooms")} value={m.bedrooms} onChange={v => updateModel(id, "bedrooms", v)} />
                 <Input label={t("settings_model_bathrooms")} value={m.bathrooms} onChange={v => updateModel(id, "bathrooms", v)} />
                 <div className="col-span-2 md:col-span-1">
-                  <label className="block text-[10px] uppercase tracking-[0.12em] text-[#1A2342]/60 mb-1" style={{ fontFamily: "'Manrope', sans-serif" }}>
+                  <label className="block text-[10px] uppercase tracking-[0.12em] text-[#1A2342]/60 mb-1" style={{ fontFamily: "var(--font-body)" }}>
                     {t("settings_model_color")}
                   </label>
                   <input type="color" value={m.color || "#4A6FA5"} onChange={e => updateModel(id, "color", e.target.value)}
@@ -5161,7 +5672,7 @@ function VillaModelsEditor({ draft, setDraft, setSaved }) {
         <Button onClick={addModel} variant="outline" icon={Plus}>{t("settings_add_model")}</Button>
       </div>
       {error && (
-        <div className="mt-2 text-xs text-[#B04B3F]" style={{ fontFamily: "'Manrope', sans-serif" }}>{error}</div>
+        <div className="mt-2 text-xs text-[#B04B3F]" style={{ fontFamily: "var(--font-body)" }}>{error}</div>
       )}
     </div>
   );
@@ -5222,14 +5733,14 @@ function LotsEditor({ draft, setDraft, setSaved }) {
 
       <div className="border border-[#1A2342]/10 overflow-x-auto">
         <div className="min-w-[500px]">
-          <div className="grid grid-cols-12 gap-2 px-3 py-2 bg-[#1A2342]/5 text-[10px] uppercase tracking-[0.12em] text-[#1A2342]/60" style={{ fontFamily: "'Manrope', sans-serif" }}>
+          <div className="grid grid-cols-12 gap-2 px-3 py-2 bg-[#1A2342]/5 text-[10px] uppercase tracking-[0.12em] text-[#1A2342]/60" style={{ fontFamily: "var(--font-body)" }}>
             <div className="col-span-2">{t("settings_lot_number")}</div>
             <div className="col-span-4">{t("settings_lot_sqft")}</div>
             <div className="col-span-4">{t("settings_lot_sqm")}</div>
             <div className="col-span-2 text-right"></div>
           </div>
           {lotEntries.length === 0 ? (
-            <div className="p-4 text-center text-sm text-[#1A2342]/50" style={{ fontFamily: "'Manrope', sans-serif" }}>
+            <div className="p-4 text-center text-sm text-[#1A2342]/50" style={{ fontFamily: "var(--font-body)" }}>
               —
             </div>
           ) : (
@@ -5237,7 +5748,7 @@ function LotsEditor({ draft, setDraft, setSaved }) {
               const sqft = typeof lot === "number" ? lot : lot.sqft;
               const sqm = typeof lot === "number" ? (lot * 0.0929) : (lot.sqm || sqft * 0.0929);
               return (
-                <div key={num} className="grid grid-cols-12 gap-2 px-3 py-2 border-t border-[#1A2342]/10 items-center" style={{ fontFamily: "'Manrope', sans-serif" }}>
+                <div key={num} className="grid grid-cols-12 gap-2 px-3 py-2 border-t border-[#1A2342]/10 items-center" style={{ fontFamily: "var(--font-body)" }}>
                   <div className="col-span-2 text-sm text-[#1A2342] font-medium">#{num}</div>
                   <div className="col-span-4">
                     <input type="number" step="0.01" value={sqft} onChange={e => updateLot(num, "sqft", e.target.value)}
@@ -5268,7 +5779,7 @@ function LotsEditor({ draft, setDraft, setSaved }) {
         <Button onClick={addLot} variant="outline" icon={Plus}>{t("settings_add_lot")}</Button>
       </div>
       {error && (
-        <div className="mt-2 text-xs text-[#B04B3F]" style={{ fontFamily: "'Manrope', sans-serif" }}>{error}</div>
+        <div className="mt-2 text-xs text-[#B04B3F]" style={{ fontFamily: "var(--font-body)" }}>{error}</div>
       )}
     </div>
   );
@@ -5332,10 +5843,10 @@ function ProspectJourneySection({ client, onChange, readOnly = false }) {
     <div className="space-y-4">
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div>
-          <h3 className="text-[#1A2342]" style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: "1.5rem", fontWeight: 500 }}>
+          <h3 className="text-[#1A2342]" style={{ fontFamily: "var(--font-heading)", fontSize: "1.5rem", fontWeight: 500 }}>
             {t("pj_section")}
           </h3>
-          <p className="text-sm text-[#1A2342]/60 mt-0.5" style={{ fontFamily: "'Manrope', sans-serif" }}>
+          <p className="text-sm text-[#1A2342]/60 mt-0.5" style={{ fontFamily: "var(--font-body)" }}>
             {t("pj_section_sub")}
           </p>
         </div>
@@ -5348,7 +5859,7 @@ function ProspectJourneySection({ client, onChange, readOnly = false }) {
 
       {events.length === 0 ? (
         <div className="p-6 bg-[#FDFBF6] border border-dashed border-[#1A2342]/20 text-center space-y-4">
-          <div className="text-sm text-[#1A2342]/60" style={{ fontFamily: "'Manrope', sans-serif" }}>
+          <div className="text-sm text-[#1A2342]/60" style={{ fontFamily: "var(--font-body)" }}>
             {t("pj_no_events")}
           </div>
           {!readOnly && (
@@ -5390,7 +5901,7 @@ function ProspectJourneySection({ client, onChange, readOnly = false }) {
                     <div className="flex items-start justify-between gap-2 flex-wrap">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <span className="text-sm font-medium text-[#1A2342]" style={{ fontFamily: "'Manrope', sans-serif" }}>
+                          <span className="text-sm font-medium text-[#1A2342]" style={{ fontFamily: "var(--font-body)" }}>
                             {ev.type === "custom" && ev.customLabel
                               ? ev.customLabel
                               : (lang === "es" ? typeCfg.label : typeCfg.labelEn)}
@@ -5400,12 +5911,12 @@ function ProspectJourneySection({ client, onChange, readOnly = false }) {
                             {lang === "es" ? statusCfg.label : statusCfg.labelEn}
                           </span>
                         </div>
-                        <div className="text-[11px] text-[#1A2342]/60 mt-1" style={{ fontFamily: "'Manrope', sans-serif" }}>
+                        <div className="text-[11px] text-[#1A2342]/60 mt-1" style={{ fontFamily: "var(--font-body)" }}>
                           {formatDateTime(ev.date, ev.time)}
                           {ev.performedBy && ` · ${ev.performedBy}`}
                         </div>
                         {ev.notes && (
-                          <div className="text-[12px] text-[#1A2342]/80 mt-2 whitespace-pre-wrap" style={{ fontFamily: "'Manrope', sans-serif" }}>
+                          <div className="text-[12px] text-[#1A2342]/80 mt-2 whitespace-pre-wrap" style={{ fontFamily: "var(--font-body)" }}>
                             {ev.notes}
                           </div>
                         )}
@@ -5415,7 +5926,7 @@ function ProspectJourneySection({ client, onChange, readOnly = false }) {
                           {ev.status === "scheduled" && (
                             <button onClick={() => setEventStatus(ev.id, "completed")}
                               className="text-[10px] uppercase tracking-[0.1em] px-2 py-1 bg-[#2D5E3E] text-[#F5F1E8] hover:bg-[#1F4A30] transition-colors"
-                              style={{ fontFamily: "'Manrope', sans-serif" }}>
+                              style={{ fontFamily: "var(--font-body)" }}>
                               ✓ {t("pj_mark_completed")}
                             </button>
                           )}
@@ -5487,7 +5998,7 @@ function JourneyEventModal({ initial, onSave, onClose }) {
     <div className="fixed inset-0 bg-[#1A2342]/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
       <div className="bg-[#F5F1E8] border border-[#1A2342]/15 w-full max-w-xl max-h-[90vh] overflow-y-auto">
         <div className="px-6 py-4 border-b border-[#1A2342]/10 flex items-center justify-between">
-          <h2 className="text-[#1A2342]" style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: "1.5rem", fontWeight: 500 }}>
+          <h2 className="text-[#1A2342]" style={{ fontFamily: "var(--font-heading)", fontSize: "1.5rem", fontWeight: 500 }}>
             {isEdit ? t("pj_modal_edit_title") : t("pj_modal_new_title")}
           </h2>
           <button onClick={onClose} className="p-1.5 hover:bg-[#1A2342]/10 transition-colors">
@@ -5561,7 +6072,7 @@ function InstructionConfirmationView({ client, instructionId, settings, onClose,
 
   if (!instruction) {
     return (
-      <div className="p-6 text-center text-sm text-[#1A2342]/60" style={{ fontFamily: "'Manrope', sans-serif" }}>
+      <div className="p-6 text-center text-sm text-[#1A2342]/60" style={{ fontFamily: "var(--font-body)" }}>
         {lang === "es" ? "No se encontró el instructivo." : "Instruction not found."}
         <div className="mt-4">
           <Button onClick={onClose} variant="outline">{t("close")}</Button>
@@ -5685,10 +6196,10 @@ function InstructionConfirmationView({ client, instructionId, settings, onClose,
       {/* Header */}
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <h2 className="text-[#1A2342]" style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: "1.75rem", fontWeight: 500 }}>
+          <h2 className="text-[#1A2342]" style={{ fontFamily: "var(--font-heading)", fontSize: "1.75rem", fontWeight: 500 }}>
             {t("pic_title")}
           </h2>
-          <p className="text-sm text-[#1A2342]/60 mt-1" style={{ fontFamily: "'Manrope', sans-serif" }}>
+          <p className="text-sm text-[#1A2342]/60 mt-1" style={{ fontFamily: "var(--font-body)" }}>
             {t("pic_sub")}
           </p>
         </div>
@@ -5697,17 +6208,17 @@ function InstructionConfirmationView({ client, instructionId, settings, onClose,
 
       {/* Instruction Summary */}
       <div className="p-5 bg-[#FDFBF6] border border-[#1A2342]/10 space-y-3">
-        <div className="text-[10px] uppercase tracking-[0.2em] text-[#1A2342]/50" style={{ fontFamily: "'Manrope', sans-serif" }}>
+        <div className="text-[10px] uppercase tracking-[0.2em] text-[#1A2342]/50" style={{ fontFamily: "var(--font-body)" }}>
           {t("pic_instruction_summary")}
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm" style={{ fontFamily: "'Manrope', sans-serif" }}>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm" style={{ fontFamily: "var(--font-body)" }}>
           <div>
             <div className="text-[10px] uppercase tracking-[0.12em] text-[#1A2342]/50 mb-1">{t("pic_reference")}</div>
             <div className="text-[#1A2342] font-mono text-[13px]">{instruction.reference}</div>
           </div>
           <div>
             <div className="text-[10px] uppercase tracking-[0.12em] text-[#1A2342]/50 mb-1">{t("pic_amount_expected")}</div>
-            <div className="text-[#1A2342]" style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: "1.25rem", fontWeight: 500 }}>
+            <div className="text-[#1A2342]" style={{ fontFamily: "var(--font-heading)", fontSize: "1.25rem", fontWeight: 500 }}>
               {fmtUSD(expected)} USD
             </div>
           </div>
@@ -5736,7 +6247,7 @@ function InstructionConfirmationView({ client, instructionId, settings, onClose,
             return (
               <button key={opt.v} type="button" onClick={() => setStatus(opt.v)}
                 className={`w-full text-left p-4 border transition-all flex items-start gap-3 ${active ? "border-[#1A2342] shadow-sm" : "border-[#1A2342]/15 hover:border-[#1A2342]/40"}`}
-                style={{ backgroundColor: active ? opt.bg : "#FDFBF6", fontFamily: "'Manrope', sans-serif" }}>
+                style={{ backgroundColor: active ? opt.bg : "#FDFBF6", fontFamily: "var(--font-body)" }}>
                 <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
                   style={{ backgroundColor: active ? opt.color : "transparent", border: `2px solid ${opt.color}` }}>
                   <Icon className="w-4 h-4" strokeWidth={2} style={{ color: active ? "#F5F1E8" : opt.color }} />
@@ -5767,10 +6278,10 @@ function InstructionConfirmationView({ client, instructionId, settings, onClose,
 
           {hasMismatch && (
             <div className="p-3 bg-[#F4EBD4] border-l-2 border-[#C9A961]">
-              <div className="text-sm text-[#8B7430] font-medium" style={{ fontFamily: "'Manrope', sans-serif" }}>
+              <div className="text-sm text-[#8B7430] font-medium" style={{ fontFamily: "var(--font-body)" }}>
                 {t("pic_amount_mismatch_warning")}
               </div>
-              <div className="text-[11px] text-[#1A2342]/70 mt-1" style={{ fontFamily: "'Manrope', sans-serif" }}>
+              <div className="text-[11px] text-[#1A2342]/70 mt-1" style={{ fontFamily: "var(--font-body)" }}>
                 {t("pic_amount_mismatch_detail")
                   .replace("{received}", fmtUSD(received))
                   .replace("{expected}", fmtUSD(expected))
@@ -5894,13 +6405,14 @@ function PaymentInstructionModal({ client, settings, onClose, onSaveClient }) {
         <meta charset="utf-8">
         <title>Payment Instruction - ${reference}</title>
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css">
-        <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500;600&family=Manrope:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+        <link href="${fontImportUrl(getBranding(settings))}" rel="stylesheet">
         <style>
+          ${fontRootCss(getBranding(settings))}
           * { box-sizing: border-box; }
           body {
             margin: 0;
             padding: 0;
-            font-family: 'Manrope', sans-serif;
+            font-family: var(--font-body);
             color: #1A2342;
             background: white;
             -webkit-print-color-adjust: exact;
@@ -6112,25 +6624,30 @@ function PaymentInstructionModal({ client, settings, onClose, onSaveClient }) {
               <Button onClick={onClose} variant="ghost" icon={X}>{t("close")}</Button>
             </div>
           </div>
-          <div className="text-[11px] text-[#1A2342]/50" style={{ fontFamily: "'Manrope', sans-serif" }}>
+          <div className="text-[11px] text-[#1A2342]/50" style={{ fontFamily: "var(--font-body)" }}>
             {t("pi_send_help")}
           </div>
         </div>
 
         {/* Printable content */}
-        <div className="pdf-page bg-white text-[#1A2342] mx-auto" style={{ maxWidth: "210mm", fontFamily: "'Manrope', sans-serif", fontSize: "10pt", padding: "15mm 20mm" }}>
+        <div className="pdf-page bg-white text-[#1A2342] mx-auto" style={{ maxWidth: "210mm", fontFamily: "var(--font-body)", fontSize: "10pt", padding: "15mm 20mm" }}>
           {/* Header */}
           <div className="pdf-section flex items-center justify-between pb-5 mb-6 border-b-2 border-[#1A2342]">
             <div>
               <div className="flex items-center gap-2 mb-1">
-                <img src="/logo.svg" alt="AMBAR" style={{ width: "32px", height: "32px" }} />
+                <img src={getBranding(settings).logoDataUrl || "/logo.svg"} alt={getBranding(settings).displayName || "AMBAR"}
+                  style={getBranding(settings).logoDataUrl ? { height: "36px", width: "auto", maxWidth: "140px", objectFit: "contain" } : { width: "32px", height: "32px" }} />
                 <div>
-                  <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: "22pt", fontWeight: 500, letterSpacing: "0.12em", lineHeight: 1 }}>
-                    AMBAR
-                  </div>
-                  <div style={{ fontSize: "7pt", letterSpacing: "0.2em", textTransform: "uppercase", color: "#4A6FA5", marginTop: "2pt" }}>
-                    Longevity Estate
-                  </div>
+                  {getBranding(settings).displayName && (
+                    <div style={{ fontFamily: "var(--font-heading)", fontSize: "22pt", fontWeight: 500, letterSpacing: "0.12em", lineHeight: 1 }}>
+                      {getBranding(settings).displayName}
+                    </div>
+                  )}
+                  {getBranding(settings).tagline && (
+                    <div style={{ fontSize: "7pt", letterSpacing: "0.2em", textTransform: "uppercase", color: "#4A6FA5", marginTop: "2pt" }}>
+                      {getBranding(settings).tagline}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -6149,13 +6666,13 @@ function PaymentInstructionModal({ client, settings, onClose, onSaveClient }) {
           <div className="pdf-section grid grid-cols-2 gap-8 mb-6">
             <div>
               <div style={{ fontSize: "7pt", letterSpacing: "0.2em", textTransform: "uppercase", color: "#4A6FA5", marginBottom: "4pt" }}>Español</div>
-              <h1 style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: "24pt", fontWeight: 400, lineHeight: 1.1, letterSpacing: "0.02em" }}>
+              <h1 style={{ fontFamily: "var(--font-heading)", fontSize: "24pt", fontWeight: 400, lineHeight: 1.1, letterSpacing: "0.02em" }}>
                 Instructivo<br/>de Pago
               </h1>
             </div>
             <div>
               <div style={{ fontSize: "7pt", letterSpacing: "0.2em", textTransform: "uppercase", color: "#4A6FA5", marginBottom: "4pt" }}>English</div>
-              <h1 style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: "24pt", fontWeight: 400, lineHeight: 1.1, letterSpacing: "0.02em" }}>
+              <h1 style={{ fontFamily: "var(--font-heading)", fontSize: "24pt", fontWeight: 400, lineHeight: 1.1, letterSpacing: "0.02em" }}>
                 Payment<br/>Instructions
               </h1>
             </div>
@@ -6222,13 +6739,13 @@ function PaymentInstructionModal({ client, settings, onClose, onSaveClient }) {
             <div className="grid grid-cols-2 gap-8">
               <div>
                 <div style={{ fontSize: "7pt", letterSpacing: "0.2em", textTransform: "uppercase", opacity: 0.6 }}>Monto a Transferir</div>
-                <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: "28pt", fontWeight: 500, marginTop: "4pt", lineHeight: 1 }}>
+                <div style={{ fontFamily: "var(--font-heading)", fontSize: "28pt", fontWeight: 500, marginTop: "4pt", lineHeight: 1 }}>
                   {fmtUSD(amount)} <span style={{ fontSize: "14pt", opacity: 0.7 }}>USD</span>
                 </div>
               </div>
               <div>
                 <div style={{ fontSize: "7pt", letterSpacing: "0.2em", textTransform: "uppercase", opacity: 0.6 }}>Amount to Transfer</div>
-                <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: "28pt", fontWeight: 500, marginTop: "4pt", lineHeight: 1 }}>
+                <div style={{ fontFamily: "var(--font-heading)", fontSize: "28pt", fontWeight: 500, marginTop: "4pt", lineHeight: 1 }}>
                   {fmtUSD(amount)} <span style={{ fontSize: "14pt", opacity: 0.7 }}>USD</span>
                 </div>
               </div>
@@ -6437,11 +6954,11 @@ function PaymentInstructionModal({ client, settings, onClose, onSaveClient }) {
       <div className="p-4 bg-[#FDFBF6] border border-[#1A2342]/10">
         <div className="flex items-center gap-3 mb-1">
           <Receipt className="w-4 h-4 text-[#4A6FA5]" strokeWidth={1.5} />
-          <div className="text-sm font-medium text-[#1A2342]" style={{ fontFamily: "'Manrope', sans-serif" }}>
+          <div className="text-sm font-medium text-[#1A2342]" style={{ fontFamily: "var(--font-body)" }}>
             {t("pi_client")}: {clientName || t("cd_unnamed")}
           </div>
         </div>
-        <div className="text-[11px] text-[#1A2342]/60 ml-7" style={{ fontFamily: "'Manrope', sans-serif" }}>
+        <div className="text-[11px] text-[#1A2342]/60 ml-7" style={{ fontFamily: "var(--font-body)" }}>
           {t("pi_villa")} {client.lotNumber ? `#${client.lotNumber}` : t("pi_villa_none")} · {t("pi_total_price")}: {fmtUSD(pricing.total)} · {t("pi_balance_pending")}: {fmtUSD(pending)}
         </div>
       </div>
@@ -6453,12 +6970,12 @@ function PaymentInstructionModal({ client, settings, onClose, onSaveClient }) {
         <div className="p-4 bg-[#F4EBD4] border-l-2 border-[#C9A961] space-y-3">
           <div className="flex items-center gap-2">
             <CalendarDays className="w-4 h-4 text-[#8B7430]" strokeWidth={1.8} />
-            <span className="text-[11px] uppercase tracking-[0.12em] text-[#8B7430] font-semibold" style={{ fontFamily: "'Manrope', sans-serif" }}>
+            <span className="text-[11px] uppercase tracking-[0.12em] text-[#8B7430] font-semibold" style={{ fontFamily: "var(--font-body)" }}>
               {t("pi_linked_to")}
             </span>
           </div>
           {billableInstallments.length === 0 ? (
-            <div className="text-sm text-[#1A2342]/70" style={{ fontFamily: "'Manrope', sans-serif" }}>
+            <div className="text-sm text-[#1A2342]/70" style={{ fontFamily: "var(--font-body)" }}>
               {t("pi_no_pending")}
             </div>
           ) : (
@@ -6480,11 +6997,11 @@ function PaymentInstructionModal({ client, settings, onClose, onSaveClient }) {
                   })
                 ]}
                 required={false} />
-              <div className="text-[11px] text-[#1A2342]/60" style={{ fontFamily: "'Manrope', sans-serif" }}>
+              <div className="text-[11px] text-[#1A2342]/60" style={{ fontFamily: "var(--font-body)" }}>
                 {t("pi_select_installment_help")}
               </div>
               {selectedInstallment && (
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-[11px] pt-2 border-t border-[#C9A961]/30" style={{ fontFamily: "'Manrope', sans-serif" }}>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-[11px] pt-2 border-t border-[#C9A961]/30" style={{ fontFamily: "var(--font-body)" }}>
                   <div>
                     <div className="text-[#1A2342]/50 uppercase tracking-[0.1em] text-[9px]">{t("plan_amount")}</div>
                     <div className="text-[#1A2342] font-medium">{fmtUSD(selectedInstallment.amount)}</div>
@@ -6506,10 +7023,10 @@ function PaymentInstructionModal({ client, settings, onClose, onSaveClient }) {
 
       {!hasPlan && (
         <div className="p-3 bg-[#FDFBF6] border-l-2 border-[#1A2342]/30">
-          <div className="text-[11px] uppercase tracking-[0.12em] text-[#1A2342]/60 font-semibold mb-0.5" style={{ fontFamily: "'Manrope', sans-serif" }}>
+          <div className="text-[11px] uppercase tracking-[0.12em] text-[#1A2342]/60 font-semibold mb-0.5" style={{ fontFamily: "var(--font-body)" }}>
             {t("pi_free_mode")}
           </div>
-          <div className="text-[11px] text-[#1A2342]/60" style={{ fontFamily: "'Manrope', sans-serif" }}>
+          <div className="text-[11px] text-[#1A2342]/60" style={{ fontFamily: "var(--font-body)" }}>
             {t("pi_free_mode_note")}
           </div>
         </div>
@@ -6529,13 +7046,13 @@ function PaymentInstructionModal({ client, settings, onClose, onSaveClient }) {
             {selectedInstallment && (
               <button type="button" onClick={() => setAmountUnlocked(!amountUnlocked)}
                 className="absolute right-0 top-0 text-[10px] uppercase tracking-[0.1em] px-2 py-0.5 text-[#8B7430] hover:text-[#1A2342] transition-colors"
-                style={{ fontFamily: "'Manrope', sans-serif" }}>
+                style={{ fontFamily: "var(--font-body)" }}>
                 {amountUnlocked ? t("pi_relock") : t("pi_unlock_amount")}
               </button>
             )}
           </div>
           {amountUnlocked && selectedInstallment && (
-            <div className="text-[11px] text-[#B04B3F] mt-1 flex items-center gap-1" style={{ fontFamily: "'Manrope', sans-serif" }}>
+            <div className="text-[11px] text-[#B04B3F] mt-1 flex items-center gap-1" style={{ fontFamily: "var(--font-body)" }}>
               <AlertTriangle className="w-3 h-3" strokeWidth={1.8} />
               {t("pi_unlock_warning")}
             </div>
@@ -6549,7 +7066,7 @@ function PaymentInstructionModal({ client, settings, onClose, onSaveClient }) {
           placeholder={t("pi_payment_number_ph")}
           disabled={!!selectedInstallment} />
         <div className="flex items-end">
-          <div className="text-[11px] text-[#1A2342]/50" style={{ fontFamily: "'Manrope', sans-serif" }}>
+          <div className="text-[11px] text-[#1A2342]/50" style={{ fontFamily: "var(--font-body)" }}>
             {t("pi_validity_label")}: {settings.payments.validityDays} {t("pi_validity_editable")}
           </div>
         </div>
@@ -6559,7 +7076,7 @@ function PaymentInstructionModal({ client, settings, onClose, onSaveClient }) {
 
       {/* Reference preview */}
       <div className="p-3 bg-[#F4EBD4] border-l-2 border-[#C9A961]">
-        <div className="text-[10px] uppercase tracking-[0.12em] text-[#1A2342]/70 mb-1" style={{ fontFamily: "'Manrope', sans-serif" }}>
+        <div className="text-[10px] uppercase tracking-[0.12em] text-[#1A2342]/70 mb-1" style={{ fontFamily: "var(--font-body)" }}>
           {t("pi_reference_unique")}
         </div>
         <div className="text-sm font-semibold text-[#1A2342]" style={{ fontFamily: "monospace", letterSpacing: "0.05em" }}>
@@ -6572,10 +7089,10 @@ function PaymentInstructionModal({ client, settings, onClose, onSaveClient }) {
         <div className="p-3 bg-[#F3DDD9] border-l-2 border-[#B04B3F] flex items-start gap-2">
           <AlertCircle className="w-4 h-4 text-[#B04B3F] flex-shrink-0 mt-0.5" strokeWidth={1.5} />
           <div>
-            <div className="text-sm font-medium text-[#B04B3F]" style={{ fontFamily: "'Manrope', sans-serif" }}>
+            <div className="text-sm font-medium text-[#B04B3F]" style={{ fontFamily: "var(--font-body)" }}>
               {t("pi_bank_incomplete")}
             </div>
-            <div className="text-[11px] text-[#1A2342]/70 mt-0.5" style={{ fontFamily: "'Manrope', sans-serif" }}>
+            <div className="text-[11px] text-[#1A2342]/70 mt-0.5" style={{ fontFamily: "var(--font-body)" }}>
               {t("pi_bank_incomplete_desc")}
             </div>
           </div>
@@ -6624,9 +7141,10 @@ function LoginView({ language, onToggleLanguage }) {
 
   return (
     <div className="min-h-screen bg-[#F5F1E8] flex items-center justify-center p-6 relative"
-      style={{ fontFamily: "'Manrope', sans-serif" }}>
+      style={{ fontFamily: "var(--font-body)" }}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500;600&family=Manrope:wght@300;400;500;600;700&display=swap');
+        ${fontRootCss(DEFAULT_BRANDING)}
       `}</style>
 
       {/* Language toggle top-right */}
@@ -6645,7 +7163,7 @@ function LoginView({ language, onToggleLanguage }) {
             <img src="/logo.svg" alt="AMBAR" className="w-14 h-14" />
           </div>
           <h1 className="text-[#1A2342]"
-            style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: "2.25rem", fontWeight: 400, letterSpacing: "0.12em", lineHeight: 1 }}>
+            style={{ fontFamily: "var(--font-heading)", fontSize: "2.25rem", fontWeight: 400, letterSpacing: "0.12em", lineHeight: 1 }}>
             AMBAR
           </h1>
           <div className="text-[10px] uppercase tracking-[0.25em] text-[#4A6FA5] mt-2">
@@ -6776,7 +7294,8 @@ export default function App() {
           ...s,
           company: { ...DEFAULT_SETTINGS.company, ...(s.company || {}) },
           bank: { ...DEFAULT_SETTINGS.bank, ...(s.bank || {}) },
-          payments: { ...DEFAULT_SETTINGS.payments, ...(s.payments || {}) }
+          payments: { ...DEFAULT_SETTINGS.payments, ...(s.payments || {}) },
+          branding: { ...DEFAULT_SETTINGS.branding, ...(s.branding || {}) }
         });
       }
       setLoading(false);
@@ -6806,7 +7325,8 @@ export default function App() {
               ...s,
               company: { ...prev.company, ...(s.company || {}) },
               bank: { ...prev.bank, ...(s.bank || {}) },
-              payments: { ...prev.payments, ...(s.payments || {}) }
+              payments: { ...prev.payments, ...(s.payments || {}) },
+              branding: { ...prev.branding, ...(s.branding || {}) }
             }));
           }
         }
@@ -6963,7 +7483,7 @@ export default function App() {
   if (authChecking) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#F5F1E8]">
-        <div className="flex items-center gap-3 text-[#1A2342]/60" style={{ fontFamily: "'Manrope', sans-serif" }}>
+        <div className="flex items-center gap-3 text-[#1A2342]/60" style={{ fontFamily: "var(--font-body)" }}>
           <Loader2 className="w-4 h-4 animate-spin" strokeWidth={1.5} />
           <span className="text-sm">{language === "es" ? "Verificando sesión..." : "Checking session..."}</span>
         </div>
@@ -6979,7 +7499,7 @@ export default function App() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#F5F1E8]">
-        <div className="flex items-center gap-3 text-[#1A2342]/60" style={{ fontFamily: "'Manrope', sans-serif" }}>
+        <div className="flex items-center gap-3 text-[#1A2342]/60" style={{ fontFamily: "var(--font-body)" }}>
           <Loader2 className="w-4 h-4 animate-spin" strokeWidth={1.5} />
           <span className="text-sm">{t("loading")}</span>
         </div>
@@ -6990,10 +7510,11 @@ export default function App() {
   return (
     <LanguageContext.Provider value={{ lang: language, t, setLang: setLanguage }}>
     <SettingsContext.Provider value={settings}>
-    <div className="min-h-screen bg-[#F5F1E8]" style={{ fontFamily: "'Manrope', sans-serif" }}>
+    <div className="min-h-screen bg-[#F5F1E8]" style={{ fontFamily: "var(--font-body)" }}>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500;600&family=Manrope:wght@300;400;500;600;700&display=swap');
-        body { font-family: 'Manrope', sans-serif; background: #F5F1E8; }
+        @import url('${fontImportUrl(getBranding(settings))}');
+        ${fontRootCss(getBranding(settings))}
+        body { font-family: var(--font-body); background: #F5F1E8; }
         input, select, textarea, button { font-family: inherit; }
         /* Subtle scrollbar */
         ::-webkit-scrollbar { width: 6px; height: 6px; }
@@ -7028,13 +7549,20 @@ export default function App() {
       <div className="border-b border-[#1A2342]/10 bg-[#F5F1E8] sticky top-0 z-40 no-print">
         <div className="max-w-7xl mx-auto px-4 md:px-8 py-3 md:py-4 flex items-center justify-between gap-2">
           <button onClick={() => { setView("dashboard"); setSelectedClientId(null); }} className="flex items-center gap-2 md:gap-3 flex-shrink-0">
-            <img src="/logo.svg" alt="AMBAR" className="w-7 h-7 flex-shrink-0" />
-            <div className="text-left hidden sm:block">
-              <div className="text-[#1A2342]" style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: "1.2rem", fontWeight: 500, letterSpacing: "0.12em", lineHeight: 1 }}>
-                AMBAR
+            <img src={getBranding(settings).logoDataUrl || "/logo.svg"} alt={getBranding(settings).displayName || "AMBAR"}
+              className={`flex-shrink-0 ${getBranding(settings).logoDataUrl ? "h-8 w-auto max-w-[140px] object-contain" : "w-7 h-7"}`} />
+            {(getBranding(settings).displayName || getBranding(settings).tagline) && (
+              <div className="text-left hidden sm:block">
+                {getBranding(settings).displayName && (
+                  <div className="text-[#1A2342]" style={{ fontFamily: "var(--font-heading)", fontSize: "1.2rem", fontWeight: 500, letterSpacing: "0.12em", lineHeight: 1 }}>
+                    {getBranding(settings).displayName}
+                  </div>
+                )}
+                {getBranding(settings).tagline && (
+                  <div className="text-[9px] uppercase tracking-[0.2em] text-[#1A2342]/50 mt-0.5 hidden md:block">{getBranding(settings).tagline}</div>
+                )}
               </div>
-              <div className="text-[9px] uppercase tracking-[0.2em] text-[#1A2342]/50 mt-0.5 hidden md:block">Client Management</div>
-            </div>
+            )}
           </button>
 
           <nav className="flex gap-0.5 md:gap-1 overflow-x-auto">
@@ -7197,7 +7725,7 @@ export default function App() {
       {/* Toast */}
       {toast && (
         <div className="fixed bottom-6 right-6 z-50 px-4 py-3 bg-[#1A2342] text-[#F5F1E8] text-sm shadow-lg flex items-center gap-2"
-          style={{ fontFamily: "'Manrope', sans-serif" }}>
+          style={{ fontFamily: "var(--font-body)" }}>
           <Check className="w-4 h-4 text-[#C9A961]" strokeWidth={2} />
           {toast.msg}
         </div>
