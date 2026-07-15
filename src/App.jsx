@@ -481,6 +481,57 @@ const TRANSLATIONS = {
     kyc_pdf_help: "Genera un PDF con campos editables, pre-llenado con los datos actuales, para que el cliente lo complete él mismo (digital o impreso).",
     kyc_pdf_generate: "Generar PDF KYC",
     kyc_pdf_error: "No se pudo generar el PDF. Intenta de nuevo.",
+
+    // KYC shareable link (CRM side)
+    kyc_link_title: "Enlace KYC para el cliente",
+    kyc_link_help: "Genera un enlace para que el cliente complete su formulario KYC en línea. Lo que envíe llega al CRM para tu revisión antes de guardarse en el expediente.",
+    kyc_link_generate: "Crear Enlace",
+    kyc_link_copy: "Copiar Enlace",
+    kyc_link_copied: "Enlace copiado",
+    kyc_link_revoke: "Revocar",
+    kyc_link_revoked: "Enlace revocado",
+    kyc_link_active: "Enlace activo hasta",
+    kyc_link_warning: "Cualquier persona con este enlace puede enviar el formulario de este cliente. Compártelo solo con el cliente y revócalo si se filtra.",
+    kyc_link_error: "No se pudo crear el enlace. Guarda el cliente primero e intenta de nuevo.",
+    kyc_link_expiry: "Vigencia del enlace",
+    kyc_link_days: "días",
+
+    // KYC submissions review (CRM side)
+    kyc_sub_title: "Formulario KYC recibido",
+    kyc_sub_pending: "Pendiente de revisión",
+    kyc_sub_submitted: "Enviado el",
+    kyc_sub_review: "Revisar y Aplicar",
+    kyc_sub_field: "Campo",
+    kyc_sub_current: "Valor actual",
+    kyc_sub_submitted_val: "Enviado por el cliente",
+    kyc_sub_apply: "Aplicar Seleccionados",
+    kyc_sub_dismiss: "Descartar",
+    kyc_sub_dismiss_confirm: "¿Descartar este envío? Quedará archivado pero no se aplicará al expediente.",
+    kyc_sub_applied: "Datos aplicados al expediente",
+    kyc_sub_dismissed: "Envío descartado",
+    kyc_sub_none: "Sin cambios seleccionados.",
+    kyc_sub_no_changes: "El envío no contiene cambios respecto al expediente actual.",
+    kyc_sub_select_all: "Seleccionar todo",
+    kyc_sub_empty: "(vacío)",
+    kyc_sub_note: "Revisa cada campo antes de aplicarlo. El envío original queda archivado como evidencia de lo declarado por el cliente.",
+
+    // Public KYC form (client-facing)
+    pk_loading: "Cargando formulario...",
+    pk_title: "Formulario de Conocimiento del Cliente",
+    pk_intro: "Complete sus datos para cumplir con la debida diligencia requerida por la Ley No. 155-17 de la República Dominicana. Sus datos se envían de forma segura a nuestro equipo.",
+    pk_greeting: "Formulario preparado para:",
+    pk_privacy: "Esta información se utiliza únicamente para fines de cumplimiento y verificación de identidad. No se comparte con terceros salvo obligación legal.",
+    pk_declaration: "Al enviar este formulario, declaro que la información suministrada es verdadera, exacta y completa, y autorizo su verificación conforme a la Ley No. 155-17 contra el Lavado de Activos y el Financiamiento del Terrorismo.",
+    pk_submit: "Enviar Formulario",
+    pk_sending: "Enviando...",
+    pk_done_title: "¡Gracias!",
+    pk_done_body: "Su formulario fue recibido. Nuestro equipo lo revisará y se comunicará con usted si necesitamos algún dato adicional.",
+    pk_err_title: "Enlace no disponible",
+    pk_err_invalid: "Este enlace no es válido. Verifica que lo hayas copiado completo o solicita uno nuevo a nuestro equipo.",
+    pk_err_expired: "Este enlace ha expirado. Contacta a nuestro equipo para recibir uno nuevo.",
+    pk_err_revoked: "Este enlace fue desactivado. Contacta a nuestro equipo para recibir uno nuevo.",
+    pk_err_server: "No pudimos cargar el formulario en este momento. Intenta de nuevo en unos minutos.",
+    pk_err_empty: "Completa al menos un campo antes de enviar.",
     // Excel
     excel_commission_sheet: "Comisiones",
     // Payment Plan
@@ -1113,6 +1164,57 @@ const TRANSLATIONS = {
     kyc_pdf_help: "Generates a PDF with editable fields, pre-filled with the current data, so the client can complete it themselves (digitally or printed).",
     kyc_pdf_generate: "Generate KYC PDF",
     kyc_pdf_error: "Could not generate the PDF. Please try again.",
+
+    // KYC shareable link (CRM side)
+    kyc_link_title: "KYC Link for the Client",
+    kyc_link_help: "Generate a link for the client to complete their KYC form online. What they submit arrives in the CRM for your review before it reaches their record.",
+    kyc_link_generate: "Create Link",
+    kyc_link_copy: "Copy Link",
+    kyc_link_copied: "Link copied",
+    kyc_link_revoke: "Revoke",
+    kyc_link_revoked: "Link revoked",
+    kyc_link_active: "Link active until",
+    kyc_link_warning: "Anyone holding this link can submit this client's form. Share it only with the client, and revoke it if it leaks.",
+    kyc_link_error: "Could not create the link. Save the client first, then try again.",
+    kyc_link_expiry: "Link validity",
+    kyc_link_days: "days",
+
+    // KYC submissions review (CRM side)
+    kyc_sub_title: "KYC Form Received",
+    kyc_sub_pending: "Pending review",
+    kyc_sub_submitted: "Submitted on",
+    kyc_sub_review: "Review & Apply",
+    kyc_sub_field: "Field",
+    kyc_sub_current: "Current value",
+    kyc_sub_submitted_val: "Submitted by client",
+    kyc_sub_apply: "Apply Selected",
+    kyc_sub_dismiss: "Dismiss",
+    kyc_sub_dismiss_confirm: "Dismiss this submission? It stays archived but will not be applied to the record.",
+    kyc_sub_applied: "Data applied to the record",
+    kyc_sub_dismissed: "Submission dismissed",
+    kyc_sub_none: "No changes selected.",
+    kyc_sub_no_changes: "This submission contains no changes versus the current record.",
+    kyc_sub_select_all: "Select all",
+    kyc_sub_empty: "(empty)",
+    kyc_sub_note: "Review each field before applying it. The original submission stays archived as evidence of what the client declared.",
+
+    // Public KYC form (client-facing)
+    pk_loading: "Loading form...",
+    pk_title: "Know Your Customer Form",
+    pk_intro: "Please complete your details to satisfy the due diligence required by Law No. 155-17 of the Dominican Republic. Your data is sent securely to our team.",
+    pk_greeting: "Form prepared for:",
+    pk_privacy: "This information is used solely for compliance and identity verification purposes. It is not shared with third parties except where legally required.",
+    pk_declaration: "By submitting this form, I declare that the information provided is true, accurate and complete, and I authorize its verification pursuant to Law No. 155-17 against Money Laundering and Terrorist Financing.",
+    pk_submit: "Submit Form",
+    pk_sending: "Sending...",
+    pk_done_title: "Thank you!",
+    pk_done_body: "Your form has been received. Our team will review it and reach out if we need any additional details.",
+    pk_err_title: "Link unavailable",
+    pk_err_invalid: "This link is not valid. Check that you copied it in full, or ask our team for a new one.",
+    pk_err_expired: "This link has expired. Please contact our team for a new one.",
+    pk_err_revoked: "This link has been deactivated. Please contact our team for a new one.",
+    pk_err_server: "We couldn't load the form right now. Please try again in a few minutes.",
+    pk_err_empty: "Please complete at least one field before submitting.",
     // Excel
     excel_commission_sheet: "Commissions",
     // Payment Plan
@@ -1993,6 +2095,114 @@ async function saveSettingsToDB(settings) {
     return false;
   }
 }
+
+// ------------------------- KYC Public Links -------------------------
+
+const KYC_LINK_DEFAULT_DAYS = 14;
+
+function kycLinkUrl(token) {
+  return `${window.location.origin}/?kyc=${token}`;
+}
+
+// Staff-side token management. Reads/writes go straight to kyc_tokens under the
+// authenticated RLS policy; the anon side of this flow lives in the kyc-form
+// Edge Function instead.
+async function createKycTokenInDB(clientId, days = KYC_LINK_DEFAULT_DAYS) {
+  try {
+    const token = crypto.randomUUID();
+    const expiresAt = new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString();
+    const { data: userData } = await supabase.auth.getUser();
+    const { error } = await supabase.from("kyc_tokens").insert({
+      token,
+      client_id: clientId,
+      expires_at: expiresAt,
+      created_by: userData?.user?.id ?? null,
+    });
+    if (error) throw error;
+    return { token, expires_at: expiresAt };
+  } catch (e) {
+    console.error("Create KYC token error:", e);
+    return null;
+  }
+}
+
+async function loadActiveKycToken(clientId) {
+  try {
+    const { data, error } = await supabase
+      .from("kyc_tokens")
+      .select("token, expires_at, revoked_at, submitted_at")
+      .eq("client_id", clientId)
+      .is("revoked_at", null)
+      .gt("expires_at", new Date().toISOString())
+      .order("created_at", { ascending: false })
+      .limit(1);
+    if (error) throw error;
+    return data?.[0] || null;
+  } catch (e) {
+    console.error("Load KYC token error:", e);
+    return null;
+  }
+}
+
+async function revokeKycTokensForClient(clientId) {
+  try {
+    const { error } = await supabase
+      .from("kyc_tokens")
+      .update({ revoked_at: new Date().toISOString() })
+      .eq("client_id", clientId)
+      .is("revoked_at", null);
+    if (error) throw error;
+    return true;
+  } catch (e) {
+    console.error("Revoke KYC token error:", e);
+    return false;
+  }
+}
+
+async function loadPendingKycSubmissions(clientId) {
+  try {
+    const { data, error } = await supabase
+      .from("kyc_submissions")
+      .select("id, data, submitted_at, status")
+      .eq("client_id", clientId)
+      .eq("status", "pending")
+      .order("submitted_at", { ascending: false });
+    if (error) throw error;
+    return data || [];
+  } catch (e) {
+    console.error("Load KYC submissions error:", e);
+    return [];
+  }
+}
+
+async function reviewKycSubmissionInDB(id, status) {
+  try {
+    const { data: userData } = await supabase.auth.getUser();
+    const { error } = await supabase
+      .from("kyc_submissions")
+      .update({ status, reviewed_by: userData?.user?.id ?? null, reviewed_at: new Date().toISOString() })
+      .eq("id", id);
+    if (error) throw error;
+    return true;
+  } catch (e) {
+    console.error("Review KYC submission error:", e);
+    return false;
+  }
+}
+
+// Fields a client may declare via the public form. Mirrors the Edge Function's
+// allowlist — kept in sync deliberately so a submission can never reach pricing,
+// status, riskLevel or kycComplete even if the function is bypassed somehow.
+const KYC_MERGEABLE_FIELDS = [
+  "fullName", "nationality", "idType", "idNumber", "countryOfIssue", "idExpiration",
+  "taxId", "dateOfBirth", "placeOfBirth", "maritalStatus", "spouseName", "spouseId",
+  "profession", "employer", "position",
+  "companyName", "rnc", "businessTaxId", "incorporationDate", "incorporationCountry",
+  "businessActivity", "website", "legalRepName", "legalRepNationality", "legalRepId",
+  "legalRepPosition",
+  "email", "phone", "phoneSecondary", "address",
+  "isPep", "pepName", "pepPosition", "pepRelationship", "sourceOfFunds", "ubos",
+];
 
 // ------------------------- Document Storage (Supabase Storage) -------------------------
 
@@ -3315,6 +3525,102 @@ function DocumentsSection({ clientId, documents, onDocumentsChange }) {
 }
 
 
+// Shareable KYC link: create, copy, revoke. Lives next to the KYC PDF button so
+// both "let the client fill it themselves" options sit together.
+function KycLinkBox({ clientId, isSaved }) {
+  const { t, lang } = useT();
+  const [token, setToken] = useState(null);
+  // Only an unsaved client has nothing to look up, so it starts settled
+  const [loading, setLoading] = useState(() => !!(isSaved && clientId));
+  const [copied, setCopied] = useState(false);
+  const [days, setDays] = useState(KYC_LINK_DEFAULT_DAYS);
+
+  useEffect(() => {
+    if (!isSaved || !clientId) return;
+    let alive = true;
+    (async () => {
+      const active = await loadActiveKycToken(clientId);
+      if (alive) { setToken(active); setLoading(false); }
+    })();
+    return () => { alive = false; };
+  }, [clientId, isSaved]);
+
+  const create = async () => {
+    setLoading(true);
+    const created = await createKycTokenInDB(clientId, Number(days) || KYC_LINK_DEFAULT_DAYS);
+    setLoading(false);
+    if (!created) { alert(t("kyc_link_error")); return; }
+    setToken(created);
+  };
+
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(kycLinkUrl(token.token));
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      window.prompt(t("kyc_link_copy"), kycLinkUrl(token.token));
+    }
+  };
+
+  const revoke = async () => {
+    setLoading(true);
+    await revokeKycTokensForClient(clientId);
+    setLoading(false);
+    setToken(null);
+  };
+
+  return (
+    <div className="p-4 bg-[#FDFBF6] border border-[#1A2342]/10">
+      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+        <div className="flex-1">
+          <div className="text-sm font-medium text-[#1A2342]" style={{ fontFamily: "var(--font-body)" }}>{t("kyc_link_title")}</div>
+          <p className="text-[11px] text-[#1A2342]/60 mt-0.5" style={{ fontFamily: "var(--font-body)" }}>{t("kyc_link_help")}</p>
+        </div>
+        {!loading && !token && isSaved && (
+          <div className="flex items-end gap-2 flex-shrink-0">
+            <div className="w-20">
+              <label className="block text-[10px] uppercase tracking-[0.12em] text-[#1A2342]/60 mb-1.5" style={{ fontFamily: "var(--font-body)" }}>
+                {t("kyc_link_days")}
+              </label>
+              <input type="number" value={days} onChange={e => setDays(e.target.value)} min="1" max="90"
+                className="w-full px-2 py-1.5 bg-white border border-[#1A2342]/15 focus:border-[#4A6FA5] focus:outline-none text-sm text-[#1A2342]" />
+            </div>
+            <Button variant="ghost" icon={Globe} onClick={create}>{t("kyc_link_generate")}</Button>
+          </div>
+        )}
+        {loading && <Loader2 className="w-4 h-4 animate-spin text-[#1A2342]/40 flex-shrink-0 mt-1" strokeWidth={1.5} />}
+      </div>
+
+      {!isSaved && (
+        <div className="mt-3 text-[11px] text-[#1A2342]/50" style={{ fontFamily: "var(--font-body)" }}>
+          {t("kyc_link_error")}
+        </div>
+      )}
+
+      {token && (
+        <div className="mt-3 space-y-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            <input readOnly value={kycLinkUrl(token.token)} onFocus={e => e.target.select()}
+              className="flex-1 min-w-[240px] px-2 py-1.5 bg-white border border-[#1A2342]/15 text-xs text-[#1A2342]/80 font-mono" />
+            <Button variant="ghost" size="sm" icon={copied ? Check : Copy} onClick={copy}>
+              {copied ? t("kyc_link_copied") : t("kyc_link_copy")}
+            </Button>
+            <Button variant="ghost" size="sm" icon={X} onClick={revoke}>{t("kyc_link_revoke")}</Button>
+          </div>
+          <div className="text-[11px] text-[#1A2342]/60" style={{ fontFamily: "var(--font-body)" }}>
+            {t("kyc_link_active")} {new Date(token.expires_at).toLocaleDateString(lang === "es" ? "es-DO" : "en-US", { year: "numeric", month: "long", day: "numeric" })}
+          </div>
+          <div className="flex items-start gap-2 p-2.5 bg-[#F3DDD9]/50 border-l-2 border-[#B04B3F] text-[11px] text-[#1A2342]/80">
+            <AlertTriangle className="w-3.5 h-3.5 text-[#B04B3F] flex-shrink-0 mt-0.5" strokeWidth={1.5} />
+            <span>{t("kyc_link_warning")}</span>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function ClientForm({ initial, initialTab, onSave, onCancel }) {
   const { t, lang } = useT();
   const settings = useSettings();
@@ -3454,19 +3760,23 @@ function ClientForm({ initial, initialTab, onSave, onCancel }) {
       {/* Tab: Personal / Entity */}
       {tab === "personal" && (
         <div className="space-y-6">
-          {/* Fillable KYC PDF — for clients who prefer to complete the form themselves */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 bg-[#FDFBF6] border border-[#1A2342]/10">
-            <div>
-              <div className="text-sm font-medium text-[#1A2342]" style={{ fontFamily: "var(--font-body)" }}>{t("kyc_pdf_title")}</div>
-              <p className="text-[11px] text-[#1A2342]/60 mt-0.5" style={{ fontFamily: "var(--font-body)" }}>{t("kyc_pdf_help")}</p>
+          {/* Two ways to let the client complete their own KYC: a fillable PDF, or a shareable link */}
+          <div className="space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 bg-[#FDFBF6] border border-[#1A2342]/10">
+              <div>
+                <div className="text-sm font-medium text-[#1A2342]" style={{ fontFamily: "var(--font-body)" }}>{t("kyc_pdf_title")}</div>
+                <p className="text-[11px] text-[#1A2342]/60 mt-0.5" style={{ fontFamily: "var(--font-body)" }}>{t("kyc_pdf_help")}</p>
+              </div>
+              <Button variant="ghost" icon={FileDown} className="flex-shrink-0"
+                onClick={async () => {
+                  try { await generateKycPdf(data, settings, lang); }
+                  catch (e) { console.error("KYC PDF failed:", e); alert(t("kyc_pdf_error")); }
+                }}>
+                {t("kyc_pdf_generate")}
+              </Button>
             </div>
-            <Button variant="ghost" icon={FileDown} className="flex-shrink-0"
-              onClick={async () => {
-                try { await generateKycPdf(data, settings, lang); }
-                catch (e) { console.error("KYC PDF failed:", e); alert(t("kyc_pdf_error")); }
-              }}>
-              {t("kyc_pdf_generate")}
-            </Button>
+
+            <KycLinkBox clientId={data.id} isSaved={!!initial} />
           </div>
 
           {data.type === "individual" ? (
@@ -4262,7 +4572,225 @@ function StageTransitionModal({ open, client, targetStage, settings, onConfirm, 
   );
 }
 
-function ClientDetail({ client, onEdit, onEditTab, onAdvanceStage, onClose, onDelete, onGeneratePayment, onConfirmInstruction, onSaveClient }) {
+// ------------------------- KYC Submission Review -------------------------
+
+const KYC_FIELD_LABELS = {
+  fullName:             { es: "Nombre Completo", en: "Full Name" },
+  nationality:          { es: "Nacionalidad", en: "Nationality" },
+  idType:               { es: "Tipo de Documento", en: "Document Type" },
+  idNumber:             { es: "Número de ID", en: "ID Number" },
+  countryOfIssue:       { es: "País de Emisión", en: "Country of Issue" },
+  idExpiration:         { es: "Vencimiento ID", en: "ID Expiration" },
+  taxId:                { es: "ID Fiscal", en: "Tax ID" },
+  dateOfBirth:          { es: "Fecha de Nacimiento", en: "Date of Birth" },
+  placeOfBirth:         { es: "Lugar de Nacimiento", en: "Place of Birth" },
+  maritalStatus:        { es: "Estado Civil", en: "Marital Status" },
+  spouseName:           { es: "Nombre del Cónyuge", en: "Spouse Name" },
+  spouseId:             { es: "ID del Cónyuge", en: "Spouse ID" },
+  profession:           { es: "Profesión", en: "Profession" },
+  employer:             { es: "Empresa donde labora", en: "Employer" },
+  position:             { es: "Cargo", en: "Position" },
+  companyName:          { es: "Razón Social", en: "Legal Name" },
+  rnc:                  { es: "RNC", en: "RNC" },
+  businessTaxId:        { es: "ID Fiscal del Negocio", en: "Business Tax ID" },
+  incorporationDate:    { es: "Fecha de Constitución", en: "Incorporation Date" },
+  incorporationCountry: { es: "País de Constitución", en: "Country of Incorporation" },
+  businessActivity:     { es: "Actividad Comercial", en: "Business Activity" },
+  website:              { es: "Website", en: "Website" },
+  legalRepName:         { es: "Rep. Legal — Nombre", en: "Legal Rep — Name" },
+  legalRepNationality:  { es: "Rep. Legal — Nacionalidad", en: "Legal Rep — Nationality" },
+  legalRepId:           { es: "Rep. Legal — ID", en: "Legal Rep — ID" },
+  legalRepPosition:     { es: "Rep. Legal — Cargo", en: "Legal Rep — Position" },
+  email:                { es: "Email", en: "Email" },
+  phone:                { es: "Teléfono Principal", en: "Primary Phone" },
+  phoneSecondary:       { es: "Teléfono Secundario", en: "Secondary Phone" },
+  address:              { es: "Dirección", en: "Address" },
+  isPep:                { es: "Es PEP", en: "Is PEP" },
+  pepName:              { es: "PEP — Nombre", en: "PEP — Name" },
+  pepPosition:          { es: "PEP — Cargo", en: "PEP — Position" },
+  pepRelationship:      { es: "PEP — Relación", en: "PEP — Relationship" },
+  sourceOfFunds:        { es: "Origen de los Fondos", en: "Source of Funds" },
+  ubos:                 { es: "Beneficiarios Finales", en: "Beneficial Owners" },
+};
+
+function fmtKycValue(field, value, lang) {
+  if (value === undefined || value === null || value === "") return null;
+  if (field === "isPep") return value ? (lang === "es" ? "Sí" : "Yes") : "No";
+  if (field === "ubos") {
+    if (!Array.isArray(value) || value.length === 0) return null;
+    return value.map(u => `${u.name || "—"} (${u.nationality || "—"}, ${u.idNumber || "—"}, ${u.percentage || "—"}%)`).join(" · ");
+  }
+  if (field === "idType") return ID_TYPES.find(i => i.v === value)?.l || String(value);
+  return String(value);
+}
+
+// Field-by-field review of what a client submitted. Nothing reaches the record
+// until staff ticks it — a client shouldn't be able to silently flip their own
+// PEP declaration, and Ley 155-17 due diligence expects a human in the loop.
+function KycReviewModal({ client, submission, onApply, onDismiss, onClose }) {
+  const { t, lang } = useT();
+
+  const rows = useMemo(() => {
+    const out = [];
+    for (const field of KYC_MERGEABLE_FIELDS) {
+      if (!(field in submission.data)) continue;
+      const submitted = fmtKycValue(field, submission.data[field], lang);
+      if (submitted === null) continue;
+      const current = fmtKycValue(field, client[field], lang);
+      if (current === submitted) continue;   // unchanged — nothing to decide
+      out.push({ field, current, submitted });
+    }
+    return out;
+  }, [client, submission, lang]);
+
+  const [selected, setSelected] = useState(() => new Set(rows.map(r => r.field)));
+  const toggle = (field) => setSelected(prev => {
+    const next = new Set(prev);
+    next.has(field) ? next.delete(field) : next.add(field);
+    return next;
+  });
+  const allOn = rows.length > 0 && selected.size === rows.length;
+
+  const apply = () => {
+    if (selected.size === 0) { alert(t("kyc_sub_none")); return; }
+    const patch = {};
+    for (const field of selected) patch[field] = submission.data[field];
+    onApply(patch);
+  };
+
+  return (
+    <div className="space-y-5">
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <div className="text-[11px] text-[#1A2342]/60" style={{ fontFamily: "var(--font-body)" }}>
+          {t("kyc_sub_submitted")} {new Date(submission.submitted_at).toLocaleString(lang === "es" ? "es-DO" : "en-US", { dateStyle: "long", timeStyle: "short" })}
+        </div>
+        {rows.length > 0 && (
+          <button onClick={() => setSelected(allOn ? new Set() : new Set(rows.map(r => r.field)))}
+            className="text-[11px] uppercase tracking-[0.12em] text-[#4A6FA5] hover:underline">
+            {t("kyc_sub_select_all")}
+          </button>
+        )}
+      </div>
+
+      {rows.length === 0 ? (
+        <div className="p-6 text-center text-sm text-[#1A2342]/50 bg-[#FDFBF6] border border-dashed border-[#1A2342]/20" style={{ fontFamily: "var(--font-body)" }}>
+          {t("kyc_sub_no_changes")}
+        </div>
+      ) : (
+        <div className="border border-[#1A2342]/10 mobile-scroll">
+          <div className="grid grid-cols-12 gap-2 px-3 py-2 bg-[#1A2342]/5 text-[10px] uppercase tracking-[0.12em] text-[#1A2342]/60" style={{ fontFamily: "var(--font-body)" }}>
+            <div className="col-span-1" />
+            <div className="col-span-3">{t("kyc_sub_field")}</div>
+            <div className="col-span-4">{t("kyc_sub_current")}</div>
+            <div className="col-span-4">{t("kyc_sub_submitted_val")}</div>
+          </div>
+          {rows.map(r => (
+            <div key={r.field} className="grid grid-cols-12 gap-2 px-3 py-2.5 border-t border-[#1A2342]/10 items-start text-sm" style={{ fontFamily: "var(--font-body)" }}>
+              <div className="col-span-1 pt-0.5">
+                <input type="checkbox" checked={selected.has(r.field)} onChange={() => toggle(r.field)}
+                  className="w-4 h-4 accent-[#1A2342] cursor-pointer" />
+              </div>
+              <div className="col-span-3 text-[11px] uppercase tracking-[0.08em] text-[#1A2342]/60 pt-0.5">
+                {KYC_FIELD_LABELS[r.field]?.[lang] || r.field}
+              </div>
+              <div className="col-span-4 text-[#1A2342]/50 break-words">{r.current || t("kyc_sub_empty")}</div>
+              <div className="col-span-4 text-[#1A2342] font-medium break-words">{r.submitted}</div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className="flex items-start gap-2 p-3 bg-[#FDFBF6] border-l-2 border-[#4A6FA5] text-[11px] text-[#1A2342]/70">
+        <Shield className="w-3.5 h-3.5 text-[#4A6FA5] flex-shrink-0 mt-0.5" strokeWidth={1.5} />
+        <span>{t("kyc_sub_note")}</span>
+      </div>
+
+      <div className="flex justify-between gap-2 pt-3 border-t border-[#1A2342]/10">
+        <Button variant="ghost" icon={Trash2} onClick={onDismiss}>{t("kyc_sub_dismiss")}</Button>
+        <div className="flex gap-2">
+          <Button variant="ghost" onClick={onClose}>{t("cancel")}</Button>
+          <Button variant="primary" icon={Check} onClick={apply} disabled={rows.length === 0}>{t("kyc_sub_apply")}</Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function KycSubmissionsBanner({ client, onSaveClient, onReviewed }) {
+  const { t, lang } = useT();
+  const [subs, setSubs] = useState([]);
+  const [reviewing, setReviewing] = useState(null);
+  const [reloadKey, setReloadKey] = useState(0);
+  const refresh = () => setReloadKey(k => k + 1);
+
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      const rows = await loadPendingKycSubmissions(client.id);
+      if (alive) setSubs(rows);
+    })();
+    return () => { alive = false; };
+  }, [client.id, reloadKey]);
+
+  const apply = async (patch) => {
+    const updated = { ...client, ...patch, updatedAt: new Date().toISOString() };
+    await onSaveClient(updated);
+    await reviewKycSubmissionInDB(reviewing.id, "merged");
+    // The link has served its purpose — close it rather than leaving a live
+    // bearer token pointing at this client.
+    await revokeKycTokensForClient(client.id);
+    setReviewing(null);
+    refresh();
+    onReviewed?.(t("kyc_sub_applied"));
+  };
+
+  const dismiss = async () => {
+    if (!confirm(t("kyc_sub_dismiss_confirm"))) return;
+    await reviewKycSubmissionInDB(reviewing.id, "dismissed");
+    setReviewing(null);
+    refresh();
+    onReviewed?.(t("kyc_sub_dismissed"));
+  };
+
+  if (subs.length === 0) return null;
+
+  return (
+    <>
+      {subs.map(sub => (
+        <div key={sub.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 bg-[#D4E6D8]/40 border-l-2 border-[#2D5E3E]">
+          <div className="flex items-start gap-3">
+            <FileText className="w-4 h-4 text-[#2D5E3E] flex-shrink-0 mt-0.5" strokeWidth={1.5} />
+            <div>
+              <div className="text-sm font-medium text-[#1A2342]" style={{ fontFamily: "var(--font-body)" }}>
+                {t("kyc_sub_title")} — <span className="text-[#2D5E3E]">{t("kyc_sub_pending")}</span>
+              </div>
+              <div className="text-[11px] text-[#1A2342]/60 mt-0.5" style={{ fontFamily: "var(--font-body)" }}>
+                {t("kyc_sub_submitted")} {new Date(sub.submitted_at).toLocaleString(lang === "es" ? "es-DO" : "en-US", { dateStyle: "medium", timeStyle: "short" })}
+              </div>
+            </div>
+          </div>
+          <Button variant="primary" size="sm" icon={Eye} className="flex-shrink-0" onClick={() => setReviewing(sub)}>
+            {t("kyc_sub_review")}
+          </Button>
+        </div>
+      ))}
+
+      <Modal open={!!reviewing} onClose={() => setReviewing(null)} title={t("kyc_sub_title")} size="xl">
+        {reviewing && (
+          <KycReviewModal
+            client={client}
+            submission={reviewing}
+            onApply={apply}
+            onDismiss={dismiss}
+            onClose={() => setReviewing(null)}
+          />
+        )}
+      </Modal>
+    </>
+  );
+}
+
+function ClientDetail({ client, onEdit, onEditTab, onAdvanceStage, onClose, onDelete, onGeneratePayment, onConfirmInstruction, onSaveClient, onToast }) {
   const { t, lang } = useT();
   const settings = useSettings();
   const villaModels = settings.villaModels || DEFAULT_SETTINGS.villaModels;
@@ -4375,6 +4903,9 @@ function ClientDetail({ client, onEdit, onEditTab, onAdvanceStage, onClose, onDe
           ]} />
         </div>
       </div>
+
+      {/* KYC submitted by the client via their public link — awaiting review */}
+      <KycSubmissionsBanner client={client} onSaveClient={onSaveClient} onReviewed={onToast} />
 
       {/* Stage Progress */}
       {(() => {
@@ -7113,6 +7644,267 @@ function PaymentInstructionModal({ client, settings, onClose, onSaveClient }) {
 
 // ------------------------- Login View -------------------------
 
+// ------------------------- Public KYC Form (no auth) -------------------------
+
+const KYC_FN_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/kyc-form`;
+
+// Rendered from main.jsx when the URL carries ?kyc=<token>, entirely outside the
+// authenticated app. Everything it knows comes from the kyc-form Edge Function —
+// it never touches the clients table, because the anon key has no access to it.
+export function PublicKycForm({ token }) {
+  const [language, setLanguage] = useState(() => loadLanguage());
+  const [state, setState] = useState("loading");   // loading | ready | sending | done | <error>
+  const [info, setInfo] = useState(null);
+  const [data, setData] = useState({});
+  const isES = language === "es";
+  const t = useCallback((k) => TRANSLATIONS[language]?.[k] ?? TRANSLATIONS.es[k] ?? k, [language]);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const r = await fetch(`${KYC_FN_URL}?token=${encodeURIComponent(token)}`, {
+          headers: { apikey: import.meta.env.VITE_SUPABASE_ANON_KEY },
+        });
+        const body = await r.json();
+        if (!r.ok || body.error) { setState(body.error || "invalid"); return; }
+        setInfo(body);
+        setState("ready");
+      } catch {
+        setState("server");
+      }
+    })();
+  }, [token]);
+
+  const branding = { ...DEFAULT_BRANDING, ...(info?.branding || {}) };
+  const update = (patch) => setData(d => ({ ...d, ...patch }));
+  const isEntity = info?.type === "entity";
+
+  // UBO helpers (entities only — an individual buyer is their own owner)
+  const ubos = data.ubos || [];
+  const addUbo = () => update({ ubos: [...ubos, { name: "", nationality: "", idNumber: "", percentage: "" }] });
+  const removeUbo = (i) => update({ ubos: ubos.filter((_, idx) => idx !== i) });
+  const updateUbo = (i, patch) => update({ ubos: ubos.map((u, idx) => idx === i ? { ...u, ...patch } : u) });
+
+  const submit = async () => {
+    setState("sending");
+    try {
+      const r = await fetch(KYC_FN_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", apikey: import.meta.env.VITE_SUPABASE_ANON_KEY },
+        body: JSON.stringify({ token, data }),
+      });
+      const body = await r.json();
+      if (!r.ok || body.error) { setState(body.error === "empty" ? "ready" : (body.error || "server")); if (body.error === "empty") alert(t("pk_err_empty")); return; }
+      setState("done");
+    } catch {
+      setState("server");
+    }
+  };
+
+  const shell = (children) => (
+    <LanguageContext.Provider value={{ lang: language, t, setLang: setLanguage }}>
+      <div className="min-h-screen bg-[#F5F1E8] py-8 px-4" style={{ fontFamily: "var(--font-body)" }}>
+        <style>{`
+          @import url('${fontImportUrl(branding)}');
+          ${fontRootCss(branding)}
+          body { font-family: var(--font-body); background: #F5F1E8; }
+          input, select, textarea, button { font-family: inherit; }
+        `}</style>
+        <div className="max-w-3xl mx-auto">
+          {/* Brand header */}
+          <div className="flex items-center justify-between mb-8">
+            <div className="flex items-center gap-3">
+              <img src={branding.logoDataUrl || "/logo.svg"} alt={branding.displayName || "AMBAR"}
+                className={branding.logoDataUrl ? "h-9 w-auto max-w-[150px] object-contain" : "w-9 h-9"} />
+              <div>
+                {branding.displayName && (
+                  <div className="text-[#1A2342]" style={{ fontFamily: "var(--font-heading)", fontSize: "1.3rem", fontWeight: 500, letterSpacing: "0.12em", lineHeight: 1 }}>
+                    {branding.displayName}
+                  </div>
+                )}
+                {branding.tagline && (
+                  <div className="text-[9px] uppercase tracking-[0.2em] text-[#1A2342]/50 mt-0.5">{branding.tagline}</div>
+                )}
+              </div>
+            </div>
+            <button onClick={() => { const next = isES ? "en" : "es"; setLanguage(next); saveLanguage(next); }}
+              className="flex items-center gap-1.5 px-3 py-1.5 border border-[#1A2342]/15 hover:border-[#1A2342]/40 transition-colors text-[11px] uppercase tracking-[0.12em] text-[#1A2342]/80 bg-white/50">
+              <Languages className="w-3.5 h-3.5" strokeWidth={1.8} />
+              <span className={isES ? "text-[#1A2342] font-semibold" : "text-[#1A2342]/40"}>ES</span>
+              <span className="text-[#1A2342]/30">/</span>
+              <span className={!isES ? "text-[#1A2342] font-semibold" : "text-[#1A2342]/40"}>EN</span>
+            </button>
+          </div>
+          {children}
+          <div className="text-center text-[10px] text-[#1A2342]/40 uppercase tracking-[0.15em] mt-8 pt-6 border-t border-[#1A2342]/10">
+            {info?.company?.legalName || ""}{info?.company?.website ? ` · ${info.company.website}` : ""}
+          </div>
+        </div>
+      </div>
+    </LanguageContext.Provider>
+  );
+
+  if (state === "loading") {
+    return shell(
+      <div className="flex items-center justify-center gap-3 text-[#1A2342]/60 py-24">
+        <Loader2 className="w-4 h-4 animate-spin" strokeWidth={1.5} />
+        <span className="text-sm">{t("pk_loading")}</span>
+      </div>
+    );
+  }
+
+  if (["invalid", "expired", "revoked", "server"].includes(state)) {
+    const msg = { invalid: "pk_err_invalid", expired: "pk_err_expired", revoked: "pk_err_revoked", server: "pk_err_server" }[state];
+    return shell(
+      <div className="bg-white border border-[#1A2342]/15 p-10 text-center">
+        <AlertCircle className="w-8 h-8 text-[#B04B3F] mx-auto mb-4" strokeWidth={1.3} />
+        <h1 className="text-[#1A2342] mb-2" style={{ fontFamily: "var(--font-heading)", fontSize: "1.6rem" }}>{t("pk_err_title")}</h1>
+        <p className="text-sm text-[#1A2342]/60 max-w-md mx-auto">{t(msg)}</p>
+        {info?.company?.email && (
+          <a href={`mailto:${info.company.email}`} className="inline-block mt-5 text-xs uppercase tracking-[0.12em] text-[#4A6FA5] hover:underline">
+            {info.company.email}
+          </a>
+        )}
+      </div>
+    );
+  }
+
+  if (state === "done") {
+    return shell(
+      <div className="bg-white border border-[#1A2342]/15 p-10 text-center">
+        <div className="w-12 h-12 rounded-full bg-[#D4E6D8] flex items-center justify-center mx-auto mb-4">
+          <Check className="w-6 h-6 text-[#2D5E3E]" strokeWidth={2} />
+        </div>
+        <h1 className="text-[#1A2342] mb-2" style={{ fontFamily: "var(--font-heading)", fontSize: "1.8rem" }}>{t("pk_done_title")}</h1>
+        <p className="text-sm text-[#1A2342]/60 max-w-md mx-auto">{t("pk_done_body")}</p>
+      </div>
+    );
+  }
+
+  const sending = state === "sending";
+
+  return shell(
+    <div className="space-y-6">
+      {/* Intro */}
+      <div className="bg-white border border-[#1A2342]/15 p-6 md:p-8">
+        <h1 className="text-[#1A2342]" style={{ fontFamily: "var(--font-heading)", fontSize: "2rem", fontWeight: 500, letterSpacing: "0.02em" }}>
+          {t("pk_title")}
+        </h1>
+        <p className="text-sm text-[#1A2342]/60 mt-2">{t("pk_intro")}</p>
+        {info?.clientName && (
+          <p className="text-sm text-[#1A2342] mt-4">
+            {t("pk_greeting")} <span className="font-semibold">{info.clientName}</span>
+          </p>
+        )}
+        <div className="mt-4 p-3 bg-[#FDFBF6] border-l-2 border-[#4A6FA5] text-[11px] text-[#1A2342]/70">
+          {t("pk_privacy")}
+        </div>
+      </div>
+
+      <div className="bg-white border border-[#1A2342]/15 p-6 md:p-8 space-y-6">
+        {isEntity ? (
+          <>
+            <SectionTitle subtitle={t("sec_corporate_sub")}>{t("sec_corporate")}</SectionTitle>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Input label={isES ? "Razón Social Completa" : "Full Legal Name"} value={data.companyName} onChange={v => update({ companyName: v })} className="col-span-2" />
+              <Input label={isES ? "RNC (Rep. Dom.)" : "RNC (Dom. Rep.)"} value={data.rnc} onChange={v => update({ rnc: v })} />
+              <Input label={isES ? "ID Fiscal del Negocio (EIN/Otro)" : "Business Tax ID (EIN/Other)"} value={data.businessTaxId} onChange={v => update({ businessTaxId: v })} />
+              <Input label={isES ? "Fecha de Constitución" : "Incorporation Date"} type="date" value={data.incorporationDate} onChange={v => update({ incorporationDate: v })} />
+              <Input label={isES ? "País de Constitución" : "Country of Incorporation"} value={data.incorporationCountry} onChange={v => update({ incorporationCountry: v })} />
+              <Input label={isES ? "Actividad Comercial Principal" : "Primary Business Activity"} value={data.businessActivity} onChange={v => update({ businessActivity: v })} className="col-span-2" />
+              <Input label="Website" value={data.website} onChange={v => update({ website: v })} />
+            </div>
+            <SectionTitle subtitle={t("sec_legal_rep_sub")}>{t("sec_legal_rep")}</SectionTitle>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Input label={isES ? "Nombre Completo" : "Full Name"} value={data.legalRepName} onChange={v => update({ legalRepName: v })} />
+              <Input label={isES ? "Nacionalidad" : "Nationality"} value={data.legalRepNationality} onChange={v => update({ legalRepNationality: v })} />
+              <Input label={isES ? "Número de ID" : "ID Number"} value={data.legalRepId} onChange={v => update({ legalRepId: v })} />
+              <Input label={isES ? "Cargo" : "Position"} value={data.legalRepPosition} onChange={v => update({ legalRepPosition: v })} />
+            </div>
+          </>
+        ) : (
+          <>
+            <SectionTitle subtitle={t("sec_personal_sub")}>{t("sec_personal")}</SectionTitle>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Input label={isES ? "Nombre Completo" : "Full Name"} value={data.fullName} onChange={v => update({ fullName: v })} />
+              <Input label={isES ? "Nacionalidad" : "Nationality"} value={data.nationality} onChange={v => update({ nationality: v })} />
+              <Select label={isES ? "Tipo de Documento" : "Document Type"} value={data.idType} onChange={v => update({ idType: v })} options={ID_TYPES} />
+              <Input label={isES ? "Número de ID" : "ID Number"} value={data.idNumber} onChange={v => update({ idNumber: v })} />
+              <Input label={isES ? "País de Emisión" : "Country of Issue"} value={data.countryOfIssue} onChange={v => update({ countryOfIssue: v })} />
+              <Input label={isES ? "Fecha Vencimiento ID" : "ID Expiration Date"} type="date" value={data.idExpiration} onChange={v => update({ idExpiration: v })} />
+              <Input label={isES ? "ID Fiscal (SSN/extranjero)" : "Tax ID (SSN/foreign)"} value={data.taxId} onChange={v => update({ taxId: v })} />
+              <Input label={isES ? "Fecha de Nacimiento" : "Date of Birth"} type="date" value={data.dateOfBirth} onChange={v => update({ dateOfBirth: v })} />
+              <Input label={isES ? "Lugar de Nacimiento" : "Place of Birth"} value={data.placeOfBirth} onChange={v => update({ placeOfBirth: v })} placeholder={isES ? "Ciudad, País" : "City, Country"} />
+              <Select label={isES ? "Estado Civil" : "Marital Status"} value={data.maritalStatus} onChange={v => update({ maritalStatus: v })} options={isES ? MARITAL_STATUS : MARITAL_STATUS_EN} />
+              <Input label={isES ? "Nombre del Cónyuge" : "Spouse Name"} value={data.spouseName} onChange={v => update({ spouseName: v })} />
+              <Input label={isES ? "ID del Cónyuge" : "Spouse ID"} value={data.spouseId} onChange={v => update({ spouseId: v })} />
+              <Input label={isES ? "Profesión u Ocupación" : "Profession or Occupation"} value={data.profession} onChange={v => update({ profession: v })} />
+              <Input label={isES ? "Empresa donde labora" : "Employer"} value={data.employer} onChange={v => update({ employer: v })} />
+              <Input label={isES ? "Cargo que ocupa" : "Position Held"} value={data.position} onChange={v => update({ position: v })} />
+            </div>
+          </>
+        )}
+
+        <SectionTitle>{t("sec_contact")}</SectionTitle>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <Input label="Email" type="email" value={data.email} onChange={v => update({ email: v })} />
+          <Input label={isES ? "Teléfono Principal" : "Primary Phone"} value={data.phone} onChange={v => update({ phone: v })} />
+          <Input label={isES ? "Teléfono Secundario" : "Secondary Phone"} value={data.phoneSecondary} onChange={v => update({ phoneSecondary: v })} />
+          <div />
+          <Input label={isES ? "Dirección Completa" : "Full Address"} value={data.address} onChange={v => update({ address: v })} textarea rows={2} className="col-span-2"
+            placeholder={isES ? "Calle, Número, Ciudad, Provincia/Estado, País, Código Postal" : "Street, Number, City, State/Province, Country, Postal Code"} />
+        </div>
+
+        <SectionTitle subtitle={t("sec_pep_sub")}>{t("sec_pep")}</SectionTitle>
+        <div className="p-4 bg-[#FDFBF6] border border-[#1A2342]/10">
+          <Checkbox label={t("lbl_pep_is")} checked={!!data.isPep} onChange={v => update({ isPep: v })} />
+          {data.isPep && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3 md:pl-6">
+              <Input label={t("lbl_pep_name")} value={data.pepName} onChange={v => update({ pepName: v })} />
+              <Input label={t("lbl_pep_position")} value={data.pepPosition} onChange={v => update({ pepPosition: v })} />
+              <Input label={t("lbl_pep_relationship")} value={data.pepRelationship} onChange={v => update({ pepRelationship: v })} className="col-span-2" />
+            </div>
+          )}
+        </div>
+
+        <SectionTitle subtitle={t("sec_funds_sub")}>{t("sec_funds")}</SectionTitle>
+        <Input textarea rows={3} value={data.sourceOfFunds} onChange={v => update({ sourceOfFunds: v })} placeholder={t("lbl_funds_placeholder")} />
+
+        {isEntity && (
+          <>
+            <SectionTitle subtitle={t("sec_ubos_sub")}>{t("sec_ubos")}</SectionTitle>
+            <div className="space-y-2">
+              {ubos.map((u, i) => (
+                <div key={i} className="grid grid-cols-12 gap-2 items-end p-3 bg-[#FDFBF6] border border-[#1A2342]/10">
+                  <Input label={t("ubo_name")} value={u.name} onChange={v => updateUbo(i, { name: v })} className="col-span-12 md:col-span-4" />
+                  <Input label={t("ubo_nationality")} value={u.nationality} onChange={v => updateUbo(i, { nationality: v })} className="col-span-6 md:col-span-3" />
+                  <Input label={t("ubo_id")} value={u.idNumber} onChange={v => updateUbo(i, { idNumber: v })} className="col-span-6 md:col-span-3" />
+                  <Input label={t("ubo_pct")} value={u.percentage} onChange={v => updateUbo(i, { percentage: v })} type="number" className="col-span-10 md:col-span-1" />
+                  <button type="button" onClick={() => removeUbo(i)} className="col-span-2 md:col-span-1 h-[34px] text-[#B04B3F] hover:bg-[#B04B3F]/10 flex items-center justify-center">
+                    <Trash2 className="w-3.5 h-3.5" strokeWidth={1.5} />
+                  </button>
+                </div>
+              ))}
+              <Button variant="ghost" size="sm" icon={Plus} onClick={addUbo}>{t("lbl_add_ubo")}</Button>
+            </div>
+          </>
+        )}
+
+        {/* Declaration */}
+        <div className="p-4 bg-[#FDFBF6] border-l-2 border-[#1A2342] text-[11px] text-[#1A2342]/80 leading-relaxed">
+          {t("pk_declaration")}
+        </div>
+
+        <div className="flex justify-end pt-2 border-t border-[#1A2342]/10">
+          <Button onClick={submit} variant="primary" icon={sending ? Loader2 : Check} disabled={sending}>
+            {sending ? t("pk_sending") : t("pk_submit")}
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function LoginView({ language, onToggleLanguage }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -7636,6 +8428,7 @@ export default function App() {
               onGeneratePayment={(c) => setPaymentInstructionFor(c)}
               onConfirmInstruction={(instructionId) => setConfirmInstructionFor({ client: selectedClient, instructionId })}
               onSaveClient={handleSave}
+              onToast={showToast}
             />
           </div>
         ) : view === "dashboard" ? (

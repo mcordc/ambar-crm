@@ -1,4 +1,12 @@
 
+# Public KYC form endpoint. verify_jwt = false because the callers are clients
+# with a link and no account; the function authenticates them by token instead.
+[functions.kyc-form]
+enabled = true
+verify_jwt = false
+import_map = "./functions/kyc-form/deno.json"
+entrypoint = "./functions/kyc-form/index.ts"
+
 [functions.notify-new-prospect]
 enabled = true
 verify_jwt = false
